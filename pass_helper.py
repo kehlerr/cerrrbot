@@ -22,7 +22,10 @@ class PassApp:
     def __init__(self):
         self.requested_pass = None
 
-    def list_passes(self, subdir: Optional[str] = "/") -> str:
+    def list_passes(self, subdir: Union[str, None]) -> str:
+
+        if subdir is None:
+            subdir = "/"
 
         lsdir = os.path.join(PASS_STORE_DIR, subdir)
 

@@ -78,9 +78,13 @@ async def process_entered_passphrase(message: types.Message, state: FSMContext):
     await delete_messages_after_timeout([message, replied])
 
 
-#@dp.message_handler(commands="pass_list")
-async def cmd_pass_list(message: types.Message):
-    subdir = message.get_args()
+@pass_form_router.message(Command(commands=["pass_list"]))
+async def cmd_pass_list(message: types.Message, command: CommandObject):
+    try:
+        subdir = command.args[0]
+    except TypeError:
+        subdir = None
+
     answer = PASS_APP.list_passes(subdir)
     replied_message = await message.reply(answer, parse_mode="HTML")
     await delete_messages_after_timeout([replied_message, message])
@@ -108,11 +112,13 @@ async def cmd_pass_add(message: types.Message, state: FSMContext, command: Comma
         await _on_got_new_pass_path(message, state)
     else:
         await state.set_state(PassForm.pass_to_enter)
-        await message.answer("Enter new pass location:", reply_markup=back_to_main_menu_kb(message))
+        msg = await message.answer("Enter new pass location:", reply_markup=back_to_main_menu_kb(message))
+        await state.update_data(prompt_msg=msg)
+        await message.delete()
 
 
 @pass_form_router.message(PassForm.pass_to_enter)
-async def on_enter_password(message: types.Message, state: FSMContext):
+async def add_pass_enter_pass_path(message: types.Message, state: FSMContext):
     pass_path = message.text
     await state.update_data(pass_path=pass_path)
     await _on_got_new_pass_path(message, state)
@@ -120,15 +126,26 @@ async def on_enter_password(message: types.Message, state: FSMContext):
 
 async def _on_got_new_pass_path(message: types.Message, state: FSMContext):
     await state.set_state(PassForm.pass_enter)
-    await message.answer("Enter password:", reply_markup=back_to_main_menu_kb(message))
+    state_data = await state.get_data()
+    prompt_msg = state_data.get("prompt_msg")
+    if prompt_msg:
+        await prompt_msg.edit_text("Enter password:", reply_markup = prompt_msg.reply_markup)
+    else:
+        msg = await message.answer("Enter password:", reply_markup=back_to_main_menu_kb(message))
+        await state.update_data(prompt_msg=msg)
+    await message.delete()
 
 
 @pass_form_router.message(PassForm.pass_enter)
 async def on_entered_password(message: types.Message, state: FSMContext):
     password = message.text
     state_data = await state.get_data()
+    await state.clear()
     pass_path = state_data.get("pass_path")
     await message.answer(f"Entered pass path {pass_path} and password: {password}")
+    prompt_msg = state_data.get("prompt_msg")
+    await prompt_msg.delete()
+    await message.delete()
 
 
 @main_router.message(Command(commands=["start", "menu"]))
