@@ -1,22 +1,15 @@
 #!/usr/bin/env python3
 
-from ast import Pass
-from enum import Enum
-from typing import List, Optional
+import asyncio
 import logging
+from dataclasses import dataclass
+from enum import Enum
+from typing import List
 from logging.handlers import RotatingFileHandler, TimedRotatingFileHandler
 
-from aiogram.handlers import CallbackQueryHandler
-
-
-import asyncio
 from aiogram import Bot, Dispatcher, types, Router, F
-#from aiogram.contrib.memory import MemoryStorage
 from aiogram.filters import Command, CommandObject, callback_data
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-
-from aiogram.utils.helper import Helper, HelperMode, Item
-
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 
@@ -27,8 +20,6 @@ from pass_helper import PASS_APP
 pass_form_router = Router()
 
 class PassForm(StatesGroup):
-    pass_show = State()
-    pass_path = State()
     pass_enter = State()
     pass_to_enter = State()
 
@@ -51,6 +42,8 @@ TEXT_CANCEL = u"Cancel\U0000274C"
 
 class Action(str, Enum):
     cancel = "CANCEL"
+    nav_prev = "NAV_PREV"
+    nav_next = "NAV_NEXT"
 
 
 class UserAction(callback_data.CallbackData, prefix="user"):
@@ -78,7 +71,7 @@ async def process_entered_passphrase(message: types.Message, state: FSMContext):
     await delete_messages_after_timeout([message, replied])
 
 
-@pass_form_router.message(Command(commands=["pass_list"]))
+#@pass_form_router.message(Command(commands=["pass_list"]))
 async def cmd_pass_list(message: types.Message, command: CommandObject):
     try:
         subdir = command.args[0]
@@ -90,15 +83,12 @@ async def cmd_pass_list(message: types.Message, command: CommandObject):
     await delete_messages_after_timeout([replied_message, message])
 
 
-#@dp.message_handler(commands="pass_show")
 async def cmd_pass_show(message: types.Message, state: FSMContext):
     pass_path = message.get_args()
 
     if not pass_path:
         reply = await message.reply("Empty pass path", disable_notification=True)
     else:
-        await state.set_state(PassForm.pass_show)
-        await state.update_data(requested_pass=pass_path)
         replied_message = await message.reply("Enter passphrase:", disable_notification=True)
     await delete_messages_after_timeout([message, replied_message])
 
@@ -112,7 +102,7 @@ async def cmd_pass_add(message: types.Message, state: FSMContext, command: Comma
         await _on_got_new_pass_path(message, state)
     else:
         await state.set_state(PassForm.pass_to_enter)
-        msg = await message.answer("Enter new pass location:", reply_markup=back_to_main_menu_kb(message))
+        msg = await message.answer("Enter new pass location:", reply_markup=back_to_main_menu_kb())
         await state.update_data(prompt_msg=msg)
         await message.delete()
 
@@ -131,7 +121,7 @@ async def _on_got_new_pass_path(message: types.Message, state: FSMContext):
     if prompt_msg:
         await prompt_msg.edit_text("Enter password:", reply_markup = prompt_msg.reply_markup)
     else:
-        msg = await message.answer("Enter password:", reply_markup=back_to_main_menu_kb(message))
+        msg = await message.answer("Enter password:", reply_markup=back_to_main_menu_kb())
         await state.update_data(prompt_msg=msg)
     await message.delete()
 
@@ -148,27 +138,11 @@ async def on_entered_password(message: types.Message, state: FSMContext):
     await message.delete()
 
 
-@main_router.message(Command(commands=["start", "menu"]))
-async def main_menu(message: types.Message):
-    await show_main_menu(message)
-
-
-#@dp.message_handler(state="*", content_types=types.message.ContentType.TEXT)
-async def message_txt(message: types.Message):
-    await delete_messages_after_timeout([message], timeout=60)
-
-
-@pass_form_router.callback_query(UserAction.filter(F.action == Action.cancel))
-async def on_cancel_btn_pressed(query, callback_data, bot: Bot, state: FSMContext, event_chat):
-    await bot.send_message(chat_id=event_chat.id, text="Welcome, master!", reply_markup=main_menu_kb())
-    #await message.answer("Welcome, master", reply_markup=main_menu_kb())
-
-
 @main_router.message(Command(commands=["pass", "pass_menu"]))
 @main_router.callback_query(MenuAppData.filter(F.app_name == MenuApp.pass_app))
 @pass_form_router.callback_query(UserAction.filter(F.action == Action.cancel))
 async def show_pass_menu(message: types.Message, bot: Bot, event_chat):
-    logger.info(f"[{message.from_user}] Showed pass_menu")
+    logger.info(f"[{message.from_user}] Shown pass_menu")
     prompt = "Choose action for pass store:"
     commands = (
         "/pass_add - add new password",
@@ -176,14 +150,79 @@ async def show_pass_menu(message: types.Message, bot: Bot, event_chat):
         "/pass_edit - change some password"
     )
     pass_menu_txt = "\n".join((prompt, *commands))
+    await message.answer("Returning")
+    await bot.send_message(text=pass_menu_txt, chat_id=event_chat.id, reply_markup=back_to_main_menu_kb())
 
-    await bot.send_message(text=pass_menu_txt, chat_id=event_chat.id, reply_markup=back_to_main_menu_kb(message))
 
 @main_router.message(Command(commands=["rtorrent"]))
 @main_router.callback_query(MenuAppData.filter(F.app_name == MenuApp.rtorrent))
 async def show_rtorrent_menu(message: types.Message, bot: Bot, event_chat):
     await message.answer(text="will be soon")
-    #await bot.send_message(text="Will be soon...", chat_id=event_chat.id)
+
+
+@pass_form_router.callback_query(UserAction.filter(F.action.in_({Action.nav_prev, Action.nav_next})))
+async def navigate_content(query, callback_data: UserAction, state: FSMContext):
+    direction = 1 if callback_data.action == Action.nav_next else -1
+    await show_nav_content(query.message, state, direction)
+
+
+async def show_nav_content(message: types.Message, state: FSMContext, direction: int = 0):
+    state_data = await state.get_data()
+    content = state_data.get("content_data")
+    if not content or not content.data:
+        return
+
+    content_size = len(content.data)
+
+    content_limit = content.page_limit
+    nav_idx = state_data.get("nav_idx", 0)
+    nav_idx += direction * content_limit
+    if nav_idx < 0 or nav_idx > content_size:
+        return
+
+    reply_markup = None
+    if content_size < content_limit:
+        reply_markup = back_to_main_menu_kb()
+    else:
+        if nav_idx - content_limit < 0:
+            reply_markup = nav_menu_without_prev_kb()
+
+        if nav_idx + content_limit >= content_size:
+            reply_markup = nav_menu_without_next_kb()
+
+        await state.update_data(nav_idx=nav_idx)
+
+    data_part = content.data[nav_idx:nav_idx+content_limit]
+    answer_text = "\n".join(data_part)
+
+    reply_markup = reply_markup or nav_menu_kb()
+    if direction == 0 and nav_idx == 0:
+        await message.answer(answer_text, reply_markup=reply_markup, parse_mode="HTML")
+    else:
+        await message.edit_text(answer_text, reply_markup=reply_markup, parse_mode="HTML")
+
+
+@main_router.message(Command(commands=["pass_list"]))
+async def pass_list_cmd(message: types.Message, state: FSMContext, command: CommandObject):
+    try:
+        subdir_path = command.args[0]
+    except TypeError:
+        subdir_path = None
+
+    passes_data = PASS_APP.get_passes_list(subdir_path)
+    content = ContentData(passes_data, 25)
+    await state.update_data({"content_data": content})
+
+    await show_nav_content(message, state)
+
+@main_router.message(Command(commands=["start", "menu"]))
+async def main_menu(message: types.Message):
+    await show_main_menu(message)
+
+
+@pass_form_router.callback_query(UserAction.filter(F.action == Action.cancel))
+async def on_cancel_btn_pressed(query, callback_data, bot: Bot, state: FSMContext, event_chat):
+    await bot.send_message(chat_id=event_chat.id, text="Welcome, master!", reply_markup=main_menu_kb())
 
 ###############
 # Common funcs
@@ -199,12 +238,43 @@ def main_menu_kb() -> types.InlineKeyboardMarkup:
         kb_builder.button(text=app.value.title(), callback_data=MenuAppData(app_name=app))
     return kb_builder.as_markup()
 
-def back_to_main_menu_kb(message) -> types.InlineKeyboardMarkup:
-    logger.info(f"[{message.from_user}] Pressed back_to_main_menu")
+def back_to_main_menu_kb() -> types.InlineKeyboardMarkup:
     kb_builder = InlineKeyboardBuilder()
     kb_builder.button(text="Cancel", callback_data=UserAction(action=Action.cancel))
 
     return kb_builder.as_markup()
+
+
+def nav_menu_kb() -> types.InlineKeyboardMarkup:
+    kb_builder = InlineKeyboardBuilder()
+    kb_builder.button(text="<-", callback_data=UserAction(action=Action.nav_prev))
+    kb_builder.button(text="Cancel", callback_data=UserAction(action=Action.cancel))
+    kb_builder.button(text="->", callback_data=UserAction(action=Action.nav_next))
+
+    return kb_builder.as_markup()
+
+
+def nav_menu_without_next_kb() -> types.InlineKeyboardMarkup:
+    kb_builder = InlineKeyboardBuilder()
+    kb_builder.button(text="<-", callback_data=UserAction(action=Action.nav_prev))
+    kb_builder.button(text="Cancel", callback_data=UserAction(action=Action.cancel))
+
+    return kb_builder.as_markup()
+
+
+def nav_menu_without_prev_kb() -> types.InlineKeyboardMarkup:
+    kb_builder = InlineKeyboardBuilder()
+    kb_builder.button(text="Cancel", callback_data=UserAction(action=Action.cancel))
+    kb_builder.button(text="->", callback_data=UserAction(action=Action.nav_next))
+
+    return kb_builder.as_markup()
+
+
+@dataclass
+class ContentData:
+    data: dict
+    page_limit: int = 10
+
 
 async def delete_messages_after_timeout(messages: List[types.Message], timeout=15):
     await asyncio.sleep(timeout)
