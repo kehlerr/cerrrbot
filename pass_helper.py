@@ -84,7 +84,7 @@ class PassApp:
             if pass_.endswith(".gpg"):
                 pass_ = os.path.splitext(pass_)[0]
                 passes_data["passfiles"].append(pass_)
-            else:
+            elif pass_:
                 passes_data["passsubdirs"].append(pass_)
 
         self._passes_data[path] = passes_data
@@ -125,6 +125,7 @@ class PassApp:
             rel_path = rel_path[1:]
 
         lsdir = os.path.join(PASS_STORE_DIR, rel_path)
+        print(lsdir)
         if os.path.exists(lsdir):
             return lsdir
 

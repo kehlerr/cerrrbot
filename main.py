@@ -4,7 +4,7 @@ import asyncio
 import logging
 from dataclasses import dataclass
 from enum import Enum
-from typing import List
+from typing import Callable, List
 from logging.handlers import RotatingFileHandler, TimedRotatingFileHandler
 
 from aiogram import Bot, Dispatcher, types, Router, F
@@ -17,14 +17,6 @@ from aiogram.fsm.state import State, StatesGroup
 from settings import TOKEN
 from pass_helper import PASS_APP
 
-pass_form_router = Router()
-
-class PassForm(StatesGroup):
-    pass_enter = State()
-    pass_to_enter = State()
-
-
-main_router = Router()
 
 logger = logging.getLogger("main")
 logger.setLevel(logging.DEBUG)
@@ -40,10 +32,22 @@ logger.addHandler(log_handler_stream)
 TEXT_CANCEL = u"Cancel\U0000274C"
 
 
+main_router = Router()
+pass_form_router = Router()
+
+class PassForm(StatesGroup):
+    pass_to_enter = State()
+    pass_add_new = State()
+    pass_edit_menu = State()
+    pass_append = State()
+    pass_overwrite = State()
+
 class Action(str, Enum):
     cancel = "CANCEL"
     nav_prev = "NAV_PREV"
     nav_next = "NAV_NEXT"
+    edit_overwrite = "EDIT_OVERWRITE"
+    edit_append = "EDIT_APPEND"
 
 
 class UserAction(callback_data.CallbackData, prefix="user"):
@@ -71,78 +75,140 @@ async def process_entered_passphrase(message: types.Message, state: FSMContext):
     await delete_messages_after_timeout([message, replied])
 
 
-#@pass_form_router.message(Command(commands=["pass_list"]))
-async def cmd_pass_list(message: types.Message, command: CommandObject):
-    try:
-        subdir = command.args[0]
-    except TypeError:
-        subdir = None
-
-    answer = PASS_APP.list_passes(subdir)
-    replied_message = await message.reply(answer, parse_mode="HTML")
-    await delete_messages_after_timeout([replied_message, message])
-
-
-async def cmd_pass_show(message: types.Message, state: FSMContext):
-    pass_path = message.get_args()
+@pass_form_router.message(Command(commands=["pass_show"]))
+async def cmd_pass_show(message: types.Message, state: FSMContext, command: CommandObject):
+    pass_path = command.args
 
     if not pass_path:
-        reply = await message.reply("Empty pass path", disable_notification=True)
+        answer_txt = "Empty pass path"
     else:
-        replied_message = await message.reply("Enter passphrase:", disable_notification=True)
-    await delete_messages_after_timeout([message, replied_message])
+        passphrase = PASS_APP.show(pass_path)
+        if passphrase:
+            answer_txt = f"<tg-spoiler>{passphrase}</tg-spoiler>"
+        else:
+            answer_txt = "Some error occured"
+
+    answer = await message.reply(answer_txt, disable_notification=True, parse_mode="HTML")
+    await delete_messages_after_timeout([message, answer])
 
 
 @pass_form_router.message(Command(commands=["pass_add"]))
 async def cmd_pass_add(message: types.Message, state: FSMContext, command: CommandObject):
-    pass_path = command.args
 
+    pass_enter_data = PassEnterData("Enter password:", PassForm.pass_add_new, back_to_main_menu_kb)
+    await state.update_data(pass_enter_data=pass_enter_data)
+
+    pass_path = command.args
     if pass_path:
-        await state.update_data(pass_path=pass_path)
-        await _on_got_new_pass_path(message, state)
+        await _on_got_new_pass_path(message, state, pass_path)
     else:
         await state.set_state(PassForm.pass_to_enter)
-        msg = await message.answer("Enter new pass location:", reply_markup=back_to_main_menu_kb())
-        await state.update_data(prompt_msg=msg)
+        pass_enter_data.prompt_msg = await message.answer(
+            "Enter new pass location:", reply_markup=back_to_main_menu_kb()
+        )
+        await message.delete()
+
+
+@pass_form_router.message(Command(commands=["pass_edit"]))
+async def cmd_pass_edit(message: types.Message, state: FSMContext, command: CommandObject):
+    pass_enter_data = PassEnterData("Choose variant of edit:", PassForm.pass_edit_menu, pass_edit_menu_kb)
+    await state.update_data(pass_enter_data=pass_enter_data)
+
+    pass_path = command.args
+    if pass_path:
+        await _on_got_new_pass_path(message, state, pass_path)
+    else:
+        await state.set_state(PassForm.pass_to_enter)
+        pass_enter_data.prompt_msg = await message.answer(
+            "Enter pass location to edit:", reply_markup=back_to_main_menu_kb()
+        )
         await message.delete()
 
 
 @pass_form_router.message(PassForm.pass_to_enter)
 async def add_pass_enter_pass_path(message: types.Message, state: FSMContext):
-    pass_path = message.text
-    await state.update_data(pass_path=pass_path)
-    await _on_got_new_pass_path(message, state)
+    await _on_got_new_pass_path(message, state, message.text)
 
 
-async def _on_got_new_pass_path(message: types.Message, state: FSMContext):
-    await state.set_state(PassForm.pass_enter)
+async def _on_got_new_pass_path(message: types.Message, state: FSMContext, pass_path: str):
     state_data = await state.get_data()
-    prompt_msg = state_data.get("prompt_msg")
+    pass_enter_data = state_data.get("pass_enter_data")
+    pass_enter_data.pass_path = pass_path
+    await state.set_state(pass_enter_data.next_state)
+
+    prompt_msg = pass_enter_data.prompt_msg
     if prompt_msg:
-        await prompt_msg.edit_text("Enter password:", reply_markup = prompt_msg.reply_markup)
+        await prompt_msg.edit_text(
+            pass_enter_data.next_prompt, reply_markup=pass_enter_data.reply_markup()
+        )
     else:
-        msg = await message.answer("Enter password:", reply_markup=back_to_main_menu_kb())
-        await state.update_data(prompt_msg=msg)
+        pass_enter_data.prompt_msg = await message.answer(
+            pass_enter_data.next_prompt, reply_markup=pass_enter_data.reply_markup()
+        )
+
     await message.delete()
 
 
-@pass_form_router.message(PassForm.pass_enter)
-async def on_entered_password(message: types.Message, state: FSMContext):
+@pass_form_router.message(PassForm.pass_add_new)
+async def on_cmd_pass_add(message: types.Message, state: FSMContext):
+    await _on_entered_password(message, state, "New password successfully added", None)
+
+@pass_form_router.message(PassForm.pass_edit_menu)
+async def pass_edit_menu(message: types.Message):
+    await message.answer("Choose variant of edit:", reply_markup=pass_edit_menu_kb())
+    await message.delete()
+
+
+@pass_form_router.callback_query(UserAction.filter(F.action == Action.edit_append))
+async def enter_password_to_append(query, state: FSMContext):
+    await state.set_state(PassForm.pass_append)
+    await query.message.edit_text("[Append] Enter new password:", reply_markup=back_to_main_menu_kb())
+
+
+@pass_form_router.message(PassForm.pass_append)
+async def cmd_pass_append(message: types.Message, state: FSMContext):
+    await _on_entered_password(message, state, "Password successfully appended", None)
+
+
+@pass_form_router.callback_query(UserAction.filter(F.action == Action.edit_overwrite))
+async def enter_password_to_append(query, state: FSMContext):
+    await state.set_state(PassForm.pass_overwrite)
+    await query.message.edit_text("[Overwrite] Enter new password:", reply_markup=back_to_main_menu_kb())
+
+
+@pass_form_router.message(PassForm.pass_overwrite)
+async def cmd_pass_overwrite(message: types.Message, state: FSMContext):
+    await _on_entered_password(message, state, "Password successfully overwritten", None)
+
+
+async def _on_entered_password(
+    message: types.Message,
+    state: FSMContext,
+    reply_txt: str,
+    pass_action: Callable
+):
     password = message.text
     state_data = await state.get_data()
     await state.clear()
-    pass_path = state_data.get("pass_path")
-    await message.answer(f"Entered pass path {pass_path} and password: {password}")
-    prompt_msg = state_data.get("prompt_msg")
-    await prompt_msg.delete()
+    pass_enter_data = state_data.get("pass_enter_data")
+    pass_path = pass_enter_data.pass_path
     await message.delete()
+    prompt_msg = pass_enter_data.prompt_msg
+    try:
+        await prompt_msg.delete()
+    except AttributeError as exc:
+        logger.exception("Empty prompt message:", str(exc))
+
+    reply = await message.answer(reply_txt)
+    await delete_messages_after_timeout([reply])
 
 
 @main_router.message(Command(commands=["pass", "pass_menu"]))
 @main_router.callback_query(MenuAppData.filter(F.app_name == MenuApp.pass_app))
 @pass_form_router.callback_query(UserAction.filter(F.action == Action.cancel))
-async def show_pass_menu(message: types.Message, bot: Bot, event_chat):
+async def show_pass_menu(message: types.Message, bot: Bot, state: FSMContext, callback_data: UserAction, event_chat):
     logger.info(f"[{message.from_user}] Shown pass_menu")
+    print(callback_data)
     prompt = "Choose action for pass store:"
     commands = (
         "/pass_add - add new password",
@@ -150,6 +216,7 @@ async def show_pass_menu(message: types.Message, bot: Bot, event_chat):
         "/pass_edit - change some password"
     )
     pass_menu_txt = "\n".join((prompt, *commands))
+    await state.clear()
     await message.answer("Returning")
     await bot.send_message(text=pass_menu_txt, chat_id=event_chat.id, reply_markup=back_to_main_menu_kb())
 
@@ -204,15 +271,13 @@ async def show_nav_content(message: types.Message, state: FSMContext, direction:
 
 @main_router.message(Command(commands=["pass_list"]))
 async def pass_list_cmd(message: types.Message, state: FSMContext, command: CommandObject):
-    try:
-        subdir_path = command.args[0]
-    except TypeError:
-        subdir_path = None
+    passes_data = PASS_APP.get_passes_list(command.args)
 
-    passes_data = PASS_APP.get_passes_list(subdir_path)
-    content = ContentData(passes_data, 25)
+    content = [f"<code>{pass_}/</code>" for pass_ in passes_data["passsubdirs"]]
+    content.extend([f"<code>{pass_}</code>" for pass_ in passes_data["passfiles"]])
+    content = ContentData(content, 25)
+
     await state.update_data({"content_data": content})
-
     await show_nav_content(message, state)
 
 @main_router.message(Command(commands=["start", "menu"]))
@@ -240,6 +305,15 @@ def main_menu_kb() -> types.InlineKeyboardMarkup:
 
 def back_to_main_menu_kb() -> types.InlineKeyboardMarkup:
     kb_builder = InlineKeyboardBuilder()
+    kb_builder.button(text="Cancel", callback_data=UserAction(action=Action.cancel))
+
+    return kb_builder.as_markup()
+
+
+def pass_edit_menu_kb() -> types.InlineKeyboardMarkup:
+    kb_builder = InlineKeyboardBuilder()
+    kb_builder.button(text="Append", callback_data=UserAction(action=Action.edit_append))
+    kb_builder.button(text="Owerwrite", callback_data=UserAction(action=Action.edit_overwrite))
     kb_builder.button(text="Cancel", callback_data=UserAction(action=Action.cancel))
 
     return kb_builder.as_markup()
@@ -274,6 +348,15 @@ def nav_menu_without_prev_kb() -> types.InlineKeyboardMarkup:
 class ContentData:
     data: dict
     page_limit: int = 10
+
+
+@dataclass
+class PassEnterData:
+    next_prompt: str
+    next_state: Action
+    reply_markup: Callable
+    pass_path: str = ""
+    prompt_msg: types.Message = None
 
 
 async def delete_messages_after_timeout(messages: List[types.Message], timeout=15):
