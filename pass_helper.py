@@ -118,14 +118,13 @@ class PassApp:
 
         return pass_data
 
-    def _get_subdir_path(rel_path: str) -> Union[str, None]:
+    def _get_subdir_path(self, rel_path: str) -> Union[str, None]:
         if not rel_path:
             rel_path = ""
         elif rel_path.startswith(os.path.sep):
             rel_path = rel_path[1:]
 
         lsdir = os.path.join(PASS_STORE_DIR, rel_path)
-        print(lsdir)
         if os.path.exists(lsdir):
             return lsdir
 
