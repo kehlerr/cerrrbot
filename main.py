@@ -10,7 +10,9 @@ from aiogram.fsm.context import FSMContext
 from aiogram.filters import Command, callback_data
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from common import Action, UserAction, back_to_main_menu_kb, navigate_content
+from common import navigate_content
+from constants import Action, UserAction
+from keyboards import Keyboards as kbs
 from commands_pass import pass_form_router
 from settings import TOKEN
 
@@ -44,7 +46,7 @@ class MenuAppData(callback_data.CallbackData, prefix="menu"):
 @main_router.message(Command(commands=["pass", "pass_menu"]))
 @main_router.callback_query(MenuAppData.filter(F.app_name == MenuApp.pass_app))
 @main_router.callback_query(UserAction.filter(F.action == Action.cancel))
-async def show_pass_menu(message: types.Message, bot: Bot, state: FSMContext, callback_data: UserAction, event_chat):
+async def show_pass_menu(message: types.Message, bot: Bot, state: FSMContext, event_chat):
     logger.info(f"[{message.from_user}] Shown pass_menu")
     prompt = "Choose action for pass store:"
     commands = (
@@ -55,7 +57,7 @@ async def show_pass_menu(message: types.Message, bot: Bot, state: FSMContext, ca
     pass_menu_txt = "\n".join((prompt, *commands))
     await state.clear()
     await message.answer("Returning")
-    await bot.send_message(text=pass_menu_txt, chat_id=event_chat.id, reply_markup=back_to_main_menu_kb())
+    await bot.send_message(text=pass_menu_txt, chat_id=event_chat.id, reply_markup=kbs.back_to_main_menu)
 
 
 @main_router.message(Command(commands=["rtorrent"]))
@@ -73,16 +75,12 @@ async def show_main_menu(message: types.Message):
     keyboard = main_menu_kb()
     await message.answer("Welcome, master", reply_markup=keyboard)
 
+
 def main_menu_kb() -> types.InlineKeyboardMarkup:
     kb_builder = InlineKeyboardBuilder()
     for app in MenuApp:
         kb_builder.button(text=app.value.title(), callback_data=MenuAppData(app_name=app))
     return kb_builder.as_markup()
-
-
-@main_router.callback_query(UserAction.filter(F.action == Action.cancel))
-async def on_cancel_btn_pressed(query, callback_data, bot: Bot, state: FSMContext, event_chat):
-    await bot.send_message(chat_id=event_chat.id, text="Welcome, master!", reply_markup=main_menu_kb())
 
 
 async def main():

@@ -1,18 +1,28 @@
 import logging
 
-from aiogram import Bot, types, Router, F
+from aiogram import types, Router, F
 from aiogram.fsm.context import FSMContext
 from aiogram.filters import Command, CommandObject
 from aiogram.fsm.state import State, StatesGroup
 from dataclasses import dataclass
 from typing import Callable
 
-from common import Action, UserAction, back_to_main_menu_kb, delete_messages_after_timeout, pass_edit_menu_kb, show_nav_content
+from common import Action, UserAction, delete_messages_after_timeout, show_nav_content, ContentData
+from keyboards import Keyboards as kbs, UserActionKeyboard
 from pass_helper import PASS_APP
 
 
 logger = logging.getLogger(__name__)
 
+
+class PassEditMenuKb(UserActionKeyboard):
+    buttons_data = (
+        ("Append", Action.edit_append),
+        ("Overwrite", Action.edit_overwrite),
+        ("Cancel", Action.cancel),
+    )
+
+kbs.pass_edit_menu = PassEditMenuKb()
 
 pass_form_router = Router()
 
@@ -65,7 +75,7 @@ async def cmd_pass_show(message: types.Message, state: FSMContext, command: Comm
 @pass_form_router.message(Command(commands=["pass_add"]))
 async def cmd_pass_add(message: types.Message, state: FSMContext, command: CommandObject):
 
-    pass_enter_data = PassEnterData("Enter password:", PassForm.pass_add_new, back_to_main_menu_kb)
+    pass_enter_data = PassEnterData("Enter password:", PassForm.pass_add_new, kbs.back_to_main_menu)
     await state.update_data(pass_enter_data=pass_enter_data)
 
     pass_path = command.args
@@ -74,14 +84,14 @@ async def cmd_pass_add(message: types.Message, state: FSMContext, command: Comma
     else:
         await state.set_state(PassForm.pass_to_enter)
         pass_enter_data.prompt_msg = await message.answer(
-            "Enter new pass location:", reply_markup=back_to_main_menu_kb()
+            "Enter new pass location:", reply_markup=kbs.back_to_main_menu_kb
         )
         await message.delete()
 
 
 @pass_form_router.message(Command(commands=["pass_edit"]))
 async def cmd_pass_edit(message: types.Message, state: FSMContext, command: CommandObject):
-    pass_enter_data = PassEnterData("Choose variant of edit:", PassForm.pass_edit_menu, pass_edit_menu_kb)
+    pass_enter_data = PassEnterData("Choose variant of edit:", PassForm.pass_edit_menu, kbs.pass_edit_menu)
     await state.update_data(pass_enter_data=pass_enter_data)
 
     pass_path = command.args
@@ -90,7 +100,7 @@ async def cmd_pass_edit(message: types.Message, state: FSMContext, command: Comm
     else:
         await state.set_state(PassForm.pass_to_enter)
         pass_enter_data.prompt_msg = await message.answer(
-            "Enter pass location to edit:", reply_markup=back_to_main_menu_kb()
+            "Enter pass location to edit:", reply_markup=kbs.back_to_main_menu
         )
         await message.delete()
 
@@ -125,14 +135,14 @@ async def on_cmd_pass_add(message: types.Message, state: FSMContext):
 
 @pass_form_router.message(PassForm.pass_edit_menu)
 async def pass_edit_menu(message: types.Message):
-    await message.answer("Choose variant of edit:", reply_markup=pass_edit_menu_kb())
+    await message.answer("Choose variant of edit:", reply_markup=kbs.pass_edit_menu)
     await message.delete()
 
 
 @pass_form_router.callback_query(UserAction.filter(F.action == Action.edit_append))
 async def enter_password_to_append(query, state: FSMContext):
     await state.set_state(PassForm.pass_append)
-    await query.message.edit_text("[Append] Enter new password:", reply_markup=back_to_main_menu_kb())
+    await query.message.edit_text("[Append] Enter new password:", reply_markup=kbs.back_to_main_menu)
 
 
 @pass_form_router.message(PassForm.pass_append)
@@ -143,7 +153,7 @@ async def cmd_pass_append(message: types.Message, state: FSMContext):
 @pass_form_router.callback_query(UserAction.filter(F.action == Action.edit_overwrite))
 async def enter_password_to_append(query, state: FSMContext):
     await state.set_state(PassForm.pass_overwrite)
-    await query.message.edit_text("[Overwrite] Enter new password:", reply_markup=back_to_main_menu_kb())
+    await query.message.edit_text("[Overwrite] Enter new password:", reply_markup=kbs.back_to_main_menu)
 
 
 @pass_form_router.message(PassForm.pass_overwrite)
@@ -179,7 +189,7 @@ async def pass_list_cmd(message: types.Message, state: FSMContext, command: Comm
 
     content = [f"<code>{pass_}/</code>" for pass_ in passes_data["passsubdirs"]]
     content.extend([f"<code>{pass_}</code>" for pass_ in passes_data["passfiles"]])
-    content = ContentData(content, 3)
+    content = ContentData(content)
 
     await state.update_data({"content_data": content})
     await show_nav_content(message, state)
