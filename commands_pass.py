@@ -62,14 +62,22 @@ async def cmd_pass_show(message: types.Message, state: FSMContext, command: Comm
     if not pass_path:
         answer_txt = "Empty pass path"
     else:
-        passphrase = PASS_APP.show(pass_path)
-        if passphrase:
-            answer_txt = f"<tg-spoiler>{passphrase}</tg-spoiler>"
+        if PASS_APP.is_authorized:
+            await impl_pass_show(pass_path)
+            return
         else:
-            answer_txt = "Some error occured"
+            answer_txt = "Enter OTP:"
 
     answer = await message.reply(answer_txt, disable_notification=True, parse_mode="HTML")
     await delete_messages_after_timeout([message, answer])
+
+
+async def impl_pass_show(message: types.Message, state: FSMContext, pass_path: str):
+    passphrase = PASS_APP.show(pass_path)
+    if passphrase:
+        answer_txt = f"<tg-spoiler>{passphrase}</tg-spoiler>"
+    else:
+        answer_txt = "Some error occured"
 
 
 @pass_form_router.message(Command(commands=["pass_add"]))
@@ -133,6 +141,7 @@ async def _on_got_new_pass_path(message: types.Message, state: FSMContext, pass_
 async def on_cmd_pass_add(message: types.Message, state: FSMContext):
     await _on_entered_password(message, state, "New password successfully added", None)
 
+
 @pass_form_router.message(PassForm.pass_edit_menu)
 async def pass_edit_menu(message: types.Message):
     await message.answer("Choose variant of edit:", reply_markup=kbs.pass_edit_menu)
@@ -151,7 +160,7 @@ async def cmd_pass_append(message: types.Message, state: FSMContext):
 
 
 @pass_form_router.callback_query(UserAction.filter(F.action == Action.edit_overwrite))
-async def enter_password_to_append(query, state: FSMContext):
+async def enter_password_to_overwrite(query, state: FSMContext):
     await state.set_state(PassForm.pass_overwrite)
     await query.message.edit_text("[Overwrite] Enter new password:", reply_markup=kbs.back_to_main_menu)
 

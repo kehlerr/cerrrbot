@@ -19,6 +19,13 @@ class PassApp:
         self._passes_data = {}
         self.auth = AuthSession()
 
+    def authorize(self, passphrase: str) -> bool:
+        return self.auth.try_authorize(passphrase).status
+
+    @property
+    def is_authorized(self) -> bool:
+        return self.auth.is_active
+
     def list_passes(self, subdir: Union[str, None]) -> Dict[str, list]:
         return self._passes_data.get(subdir, self._fill_passes_data(subdir))
 
