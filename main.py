@@ -5,32 +5,34 @@ import logging
 from enum import Enum
 from logging.handlers import RotatingFileHandler, TimedRotatingFileHandler
 
-from aiogram import Bot, Dispatcher, types, Router, F
-from aiogram.fsm.context import FSMContext
+from aiogram import Bot, Dispatcher, F, Router, types
 from aiogram.filters import Command, callback_data
+from aiogram.fsm.context import FSMContext
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
+from commands_pass import pass_form_router
 from common import navigate_content
 from constants import Action, UserAction
 from keyboards import Keyboards as kbs
-from commands_pass import pass_form_router
 from settings import TOKEN
-
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
-log_handler = TimedRotatingFileHandler('main.log', when='s', interval=10, backupCount=5)
+log_handler = TimedRotatingFileHandler("main.log", when="s", interval=10, backupCount=5)
 log_handler_stream = logging.StreamHandler()
-formatter = logging.Formatter('[%(levelname)s][%(asctime)s] %(message)s', '%m/%d/%Y-%H:%M:%S')
+formatter = logging.Formatter(
+    "[%(levelname)s][%(asctime)s] %(message)s", "%m/%d/%Y-%H:%M:%S"
+)
 log_handler.setFormatter(formatter)
 log_handler_stream.setFormatter(formatter)
-#logger.addHandler(log_handler)
+# logger.addHandler(log_handler)
 logger.addHandler(log_handler_stream)
 
 
 main_router = Router()
 main_router.callback_query.register(
-    navigate_content, UserAction.filter(F.action.in_({Action.nav_prev, Action.nav_next}))
+    navigate_content,
+    UserAction.filter(F.action.in_({Action.nav_prev, Action.nav_next})),
 )
 
 
@@ -46,18 +48,22 @@ class MenuAppData(callback_data.CallbackData, prefix="menu"):
 @main_router.message(Command(commands=["pass", "pass_menu"]))
 @main_router.callback_query(MenuAppData.filter(F.app_name == MenuApp.pass_app))
 @main_router.callback_query(UserAction.filter(F.action == Action.cancel))
-async def show_pass_menu(message: types.Message, bot: Bot, state: FSMContext, event_chat):
+async def show_pass_menu(
+    message: types.Message, bot: Bot, state: FSMContext, event_chat
+):
     logger.info(f"[{message.from_user}] Shown pass_menu")
     prompt = "Choose action for pass store:"
     commands = (
         "/pass_add - add new password",
         "/pass_list - show stored passwords",
-        "/pass_edit - change some password"
+        "/pass_edit - change some password",
     )
     pass_menu_txt = "\n".join((prompt, *commands))
     await state.clear()
     await message.answer("Returning")
-    await bot.send_message(text=pass_menu_txt, chat_id=event_chat.id, reply_markup=kbs.back_to_main_menu)
+    await bot.send_message(
+        text=pass_menu_txt, chat_id=event_chat.id, reply_markup=kbs.back_to_main_menu
+    )
 
 
 @main_router.message(Command(commands=["rtorrent"]))
@@ -79,7 +85,9 @@ async def show_main_menu(message: types.Message):
 def main_menu_kb() -> types.InlineKeyboardMarkup:
     kb_builder = InlineKeyboardBuilder()
     for app in MenuApp:
-        kb_builder.button(text=app.value.title(), callback_data=MenuAppData(app_name=app))
+        kb_builder.button(
+            text=app.value.title(), callback_data=MenuAppData(app_name=app)
+        )
     return kb_builder.as_markup()
 
 
@@ -95,5 +103,5 @@ async def main():
 
 
 if __name__ == "__main__":
-    #logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+    # logging.basicConfig(level=logging.INFO, stream=sys.stdout)
     asyncio.run(main())

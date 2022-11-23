@@ -1,5 +1,5 @@
-from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import InlineKeyboardMarkup
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from constants import Action, UserAction
 
@@ -23,7 +23,7 @@ class NavMenuKb(UserActionKeyboard):
     buttons_data = (
         ("<-", Action.nav_prev),
         ("Cancel", Action.cancel),
-        ("->", Action.nav_next)
+        ("->", Action.nav_next),
     )
 
 
@@ -35,10 +35,7 @@ class NavMenuWithoutNextKb(UserActionKeyboard):
 
 
 class NavMenuWithoutPrevKb(UserActionKeyboard):
-    buttons_data = (
-        ("Cancel", Action.cancel),
-        ("->", Action.nav_next)
-    )
+    buttons_data = (("Cancel", Action.cancel), ("->", Action.nav_next))
 
 
 class Keyboards:

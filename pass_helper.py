@@ -1,13 +1,11 @@
 import logging
 import os
 import subprocess
-from typing import Optional, Union, Dict, Any
-from datetime import datetime
+from typing import Any, Dict, Optional, Union
 
 from auth import AuthSession
 from common import AppResponse
-from settings import PASS_STORE_DIR, GPG_EXT
-
+from settings import GPG_EXT, PASS_STORE_DIR
 
 logger = logging.getLogger(__name__)
 
@@ -81,10 +79,7 @@ class PassApp:
         if not lsdir:
             return {}
 
-        passes_data = {
-            "passfiles": [],
-            "passsubdirs": []
-        }
+        passes_data = {"passfiles": [], "passsubdirs": []}
 
         pass_list = subprocess.check_output(rf"ls {lsdir}", shell=True).decode("utf-8")
         for pass_ in pass_list.split("\n"):
@@ -104,7 +99,9 @@ class PassApp:
 
         cmd = rf"pass insert -e {pass_path}"
         try:
-            saved_passphrase = subprocess.check_output(cmd, universal_newlines=True, shell=True, input=pass_data)
+            subprocess.check_output(
+                cmd, universal_newlines=True, shell=True, input=pass_data
+            )
         except Exception as exc:
             logger.error(f"Some error occured on updating pass data: {exc}")
             return False
@@ -114,7 +111,7 @@ class PassApp:
     def _acquire_pass_data(self, pass_path: str) -> Union[str, None]:
         try:
             pass_file = self._get_pass_filepath(pass_path)
-        except (PassPathNotExists, PassPathEmptyError) as exc:
+        except (PassPathNotExists, PassPathEmptyError):
             return None
 
         try:

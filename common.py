@@ -1,11 +1,16 @@
 import asyncio
 from dataclasses import dataclass
-from typing import Optional, Union, List
+from typing import List, Optional, Union
 
 from aiogram import types
 from aiogram.fsm.context import FSMContext
 
-from constants import Action, UserAction, DEFAULT_PAGE_LIMIT, DEFAULT_TIMEOUT_TO_DELETE_MESSAGES
+from constants import (
+    DEFAULT_PAGE_LIMIT,
+    DEFAULT_TIMEOUT_TO_DELETE_MESSAGES,
+    Action,
+    UserAction,
+)
 from keyboards import Keyboards as kbs
 
 
@@ -26,7 +31,9 @@ async def navigate_content(query, callback_data: UserAction, state: FSMContext):
     await show_nav_content(query.message, state, direction)
 
 
-async def show_nav_content(message: types.Message, state: FSMContext, direction: int = 0):
+async def show_nav_content(
+    message: types.Message, state: FSMContext, direction: int = 0
+):
     state_data = await state.get_data()
     content = state_data.get("content_data")
     if not content or not content.data:
@@ -52,17 +59,21 @@ async def show_nav_content(message: types.Message, state: FSMContext, direction:
 
         await state.update_data(nav_idx=nav_idx)
 
-    data_part = content.data[nav_idx:nav_idx+content_limit]
+    data_part = content.data[nav_idx: nav_idx + content_limit]
     answer_text = "\n".join(data_part)
 
     reply_markup = reply_markup or kbs.nav_menu
     if direction == 0 and nav_idx == 0:
         await message.answer(answer_text, reply_markup=reply_markup, parse_mode="HTML")
     else:
-        await message.edit_text(answer_text, reply_markup=reply_markup, parse_mode="HTML")
+        await message.edit_text(
+            answer_text, reply_markup=reply_markup, parse_mode="HTML"
+        )
 
 
-async def delete_messages_after_timeout(messages: List[types.Message], timeout=DEFAULT_TIMEOUT_TO_DELETE_MESSAGES):
+async def delete_messages_after_timeout(
+    messages: List[types.Message], timeout=DEFAULT_TIMEOUT_TO_DELETE_MESSAGES
+):
     if timeout > 0:
         await asyncio.sleep(timeout)
 
