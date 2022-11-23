@@ -9,7 +9,7 @@ from common import AppResponse
 from settings import PASS_STORE_DIR, GPG_EXT
 
 
-logger = logging.getLogger("main")
+logger = logging.getLogger(__name__)
 
 
 class PassApp:
@@ -121,6 +121,7 @@ class PassApp:
             cmd = rf"echo $GPG_PASSPHRASE | gpg -d --pinentry-mode loopback --passphrase-fd 0 {pass_file}"
             pass_data = subprocess.check_output(cmd, shell=True).decode("utf-8")
         except Exception as exc:
+            logger.error("Error occured while getting pass data: ", str(exc))
             return None
 
         return pass_data

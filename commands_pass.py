@@ -1,6 +1,8 @@
 import logging
+import html
+from functools import partial
 
-from aiogram import types, Router, F
+from aiogram import types, Router, F, Bot
 from aiogram.fsm.context import FSMContext
 from aiogram.filters import Command, CommandObject
 from aiogram.fsm.state import State, StatesGroup
@@ -14,6 +16,8 @@ from pass_helper import PASS_APP
 
 logger = logging.getLogger(__name__)
 
+pass_form_router = Router()
+
 
 class PassEditMenuKb(UserActionKeyboard):
     buttons_data = (
@@ -24,8 +28,6 @@ class PassEditMenuKb(UserActionKeyboard):
 
 kbs.pass_edit_menu = PassEditMenuKb()
 
-pass_form_router = Router()
-
 
 class PassForm(StatesGroup):
     pass_to_enter = State()
@@ -33,6 +35,8 @@ class PassForm(StatesGroup):
     pass_edit_menu = State()
     pass_append = State()
     pass_overwrite = State()
+    pass_to_enter_otp = State()
+
 
 @dataclass
 class PassEnterData:
@@ -43,41 +47,40 @@ class PassEnterData:
     prompt_msg: types.Message = None
 
 
-async def process_entered_passphrase(message: types.Message, state: FSMContext):
-    argument = message["text"]
-
-    if argument == "12345":
-        answer = PASS_APP.show()
-    else:
-        answer = "Incorrect passphrase"
-
-    replied = await message.reply(answer, parse_mode="HTML", disable_notification=True)
-    await delete_messages_after_timeout([message, replied])
-
-
 @pass_form_router.message(Command(commands=["pass_show"]))
-async def cmd_pass_show(message: types.Message, state: FSMContext, command: CommandObject):
+async def cmd_pass_show(message: types.Message, state: FSMContext, command: CommandObject, bot: Bot, event_chat):
+    await message.delete()
     pass_path = command.args
-
     if not pass_path:
-        answer_txt = "Empty pass path"
-    else:
-        if PASS_APP.is_authorized:
-            await impl_pass_show(pass_path)
-            return
-        else:
-            answer_txt = "Enter OTP:"
+        await state.clear()
+        answer = await bot.send_message(text="Empty pass path", disable_notification=True, chat_id=event_chat.id)
+        await delete_messages_after_timeout([answer])
+        return
 
-    answer = await message.reply(answer_txt, disable_notification=True, parse_mode="HTML")
-    await delete_messages_after_timeout([message, answer])
+    callback=partial(impl_pass_show, message, pass_path)
+    await action_on_auth(message, state, bot, event_chat, callback)
 
 
-async def impl_pass_show(message: types.Message, state: FSMContext, pass_path: str):
+async def action_on_auth(message: types.Message, state: FSMContext, bot: Bot, event_chat, callback: Callable):
+    if PASS_APP.is_authorized:
+        await callback(state)
+        return
+
+    answer = await bot.send_message(text="Enter OTP:", disable_notification=True, chat_id=event_chat.id, reply_markup=kbs.back_to_main_menu)
+    await state.set_state(PassForm.pass_to_enter_otp)
+    await state.update_data(callback=callback, prompt_msg=answer)
+
+
+async def impl_pass_show(message: types.Message, pass_path: str, state: FSMContext):
     passphrase = PASS_APP.show(pass_path)
     if passphrase:
-        answer_txt = f"<tg-spoiler>{passphrase}</tg-spoiler>"
+        passphrase = html.escape(passphrase)
+        answer = await message.answer(f"<tg-spoiler>{passphrase}</tg-spoiler>", parse_mode="HTML")
     else:
-        answer_txt = "Some error occured"
+        answer = await message.answer("Some error occured")
+
+    await state.clear()
+    await delete_messages_after_timeout([answer], timeout=7)
 
 
 @pass_form_router.message(Command(commands=["pass_add"]))
@@ -92,7 +95,7 @@ async def cmd_pass_add(message: types.Message, state: FSMContext, command: Comma
     else:
         await state.set_state(PassForm.pass_to_enter)
         pass_enter_data.prompt_msg = await message.answer(
-            "Enter new pass location:", reply_markup=kbs.back_to_main_menu_kb
+            "Enter new pass location:", reply_markup=kbs.back_to_main_menu
         )
         await message.delete()
 
@@ -118,6 +121,21 @@ async def add_pass_enter_pass_path(message: types.Message, state: FSMContext):
     await _on_got_new_pass_path(message, state, message.text)
 
 
+@pass_form_router.message(PassForm.pass_to_enter_otp)
+async def on_got_otp(message: types.Message, state: FSMContext):
+    await message.delete()
+
+    if PASS_APP.authorize(message.text):
+        state_data = await state.get_data()
+        callback = state_data.get("callback")
+        if callback:
+            await callback(state)
+
+        prompt_msg = state_data.get("prompt_msg")
+        if prompt_msg:
+            await prompt_msg.delete()
+
+
 async def _on_got_new_pass_path(message: types.Message, state: FSMContext, pass_path: str):
     state_data = await state.get_data()
     pass_enter_data = state_data.get("pass_enter_data")
@@ -126,20 +144,16 @@ async def _on_got_new_pass_path(message: types.Message, state: FSMContext, pass_
 
     prompt_msg = pass_enter_data.prompt_msg
     if prompt_msg:
-        await prompt_msg.edit_text(
-            pass_enter_data.next_prompt, reply_markup=pass_enter_data.reply_markup()
-        )
+        await prompt_msg.edit_text(pass_enter_data.next_prompt, reply_markup=pass_enter_data.reply_markup)
     else:
-        pass_enter_data.prompt_msg = await message.answer(
-            pass_enter_data.next_prompt, reply_markup=pass_enter_data.reply_markup()
-        )
+        pass_enter_data.prompt_msg = await message.answer(pass_enter_data.next_prompt, reply_markup=pass_enter_data.reply_markup)
 
     await message.delete()
 
 
 @pass_form_router.message(PassForm.pass_add_new)
 async def on_cmd_pass_add(message: types.Message, state: FSMContext):
-    await _on_entered_password(message, state, "New password successfully added", None)
+    await _on_entered_password(message, "New password successfully added", PASS_APP.add_new_pass, state)
 
 
 @pass_form_router.message(PassForm.pass_edit_menu)
@@ -155,8 +169,9 @@ async def enter_password_to_append(query, state: FSMContext):
 
 
 @pass_form_router.message(PassForm.pass_append)
-async def cmd_pass_append(message: types.Message, state: FSMContext):
-    await _on_entered_password(message, state, "Password successfully appended", None)
+async def cmd_edit_append(message: types.Message, state: FSMContext, bot: Bot, event_chat):
+    callback=partial(_on_entered_password, message, "Password successfully appended", PASS_APP.edit_append)
+    await action_on_auth(message, state, bot, event_chat, callback)
 
 
 @pass_form_router.callback_query(UserAction.filter(F.action == Action.edit_overwrite))
@@ -166,16 +181,12 @@ async def enter_password_to_overwrite(query, state: FSMContext):
 
 
 @pass_form_router.message(PassForm.pass_overwrite)
-async def cmd_pass_overwrite(message: types.Message, state: FSMContext):
-    await _on_entered_password(message, state, "Password successfully overwritten", None)
+async def cmd_edit_overwrite(message: types.Message, state: FSMContext, bot: Bot, event_chat):
+    callback=partial(_on_entered_password, message, "Password successfully overwritten", PASS_APP.edit_overwrite)
+    await action_on_auth(message, state, bot, event_chat, callback)
 
 
-async def _on_entered_password(
-    message: types.Message,
-    state: FSMContext,
-    reply_txt: str,
-    pass_action: Callable
-):
+async def _on_entered_password(message: types.Message, reply_txt: str, pass_action: Callable, state: FSMContext):
     password = message.text
     state_data = await state.get_data()
     await state.clear()
@@ -187,6 +198,11 @@ async def _on_entered_password(
         await prompt_msg.delete()
     except AttributeError as exc:
         logger.exception("Empty prompt message:", str(exc))
+
+    try:
+        pass_action(pass_path, password)
+    except Exception as exc:
+        logger.exception("Error occurred while executing pass callback: %s", str(exc))
 
     reply = await message.answer(reply_txt)
     await delete_messages_after_timeout([reply])

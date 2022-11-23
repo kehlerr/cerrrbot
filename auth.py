@@ -3,17 +3,18 @@ import logging
 from typing import Optional, Union, Dict, Any
 
 from common import AppResponse
+from datetime import datetime
 from settings import OTP_SECRET_KEY
 
 
-logger = logging.getLogger("main")
+logger = logging.getLogger(__name__)
 
 otp = pyotp.TOTP(OTP_SECRET_KEY)
 
 
 class AuthSession:
 
-    default_ttl = 30*60
+    default_ttl = 10*60
 
     def __init__(self, ttl: Optional[int] = None):
         self._active_until = 0
@@ -34,10 +35,8 @@ class AuthSession:
         return AppResponse(True)
 
     def authorize(self):
-        self._active_until = datetime.now() + self._ttl
+        self._active_until = datetime.now().timestamp() + self._ttl
 
     @property
     def is_active(self):
-        return datetime.now() < self._active_until
-
-
+        return datetime.now().timestamp() < self._active_until

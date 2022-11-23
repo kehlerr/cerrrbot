@@ -17,7 +17,7 @@ from commands_pass import pass_form_router
 from settings import TOKEN
 
 
-logger = logging.getLogger("main")
+logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 log_handler = TimedRotatingFileHandler('main.log', when='s', interval=10, backupCount=5)
 log_handler_stream = logging.StreamHandler()
