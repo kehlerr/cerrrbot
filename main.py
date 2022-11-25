@@ -35,6 +35,7 @@ main_router.callback_query.register(
     UserAction.filter(F.action.in_({Action.nav_prev, Action.nav_next})),
 )
 
+others_router = Router()
 
 class MenuApp(str, Enum):
     pass_app = "Pass app"
@@ -76,6 +77,10 @@ async def show_rtorrent_menu(message: types.Message, bot: Bot, event_chat):
 async def main_menu(message: types.Message):
     await show_main_menu(message)
 
+@others_router.message()
+async def common_msg(message: types.Message):
+    print(message.json(exclude={"chat"}, exclude_none=True))
+
 
 async def show_main_menu(message: types.Message):
     keyboard = main_menu_kb()
@@ -98,6 +103,7 @@ async def main():
     dp = Dispatcher()
     dp.include_router(main_router)
     dp.include_router(pass_form_router)
+    dp.include_router(others_router)
     await dp.start_polling(bot)
     logger.info("Bot started")
 
