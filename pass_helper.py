@@ -4,7 +4,7 @@ import subprocess
 from typing import Any, Dict, Optional, Union
 
 from auth import AuthSession
-from common import AppResponse
+from common import AppResult
 from settings import GPG_EXT, PASS_STORE_DIR
 
 logger = logging.getLogger(__name__)
@@ -31,39 +31,39 @@ class PassApp:
         if self.auth.is_active:
             return self._acquire_pass_data(pass_path)
 
-    def add_new_pass(self, pass_path: str, passphrase: str) -> AppResponse:
+    def add_new_pass(self, pass_path: str, passphrase: str) -> AppResult:
         if self.is_pass_exists(pass_path):
-            app_response = AppResponse(f"Pass path already exists: {pass_path}", False)
-            logger.error(app_response.result_info)
-            return app_response
+            result = AppResult(f"Pass path already exists: {pass_path}", False)
+            logger.error(app_result.info)
+            return result
 
         result = self._insert_pass_data(pass_path, passphrase)
-        return AppResponse(result)
+        return AppResult(result)
 
-    def edit_overwrite(self, pass_path: str, passphrase: str) -> AppResponse:
+    def edit_overwrite(self, pass_path: str, passphrase: str) -> AppResult:
         if not self.auth.is_active:
-            return AppResponse(False, "Pass session not activated")
+            return AppResult(False, "Pass session not activated")
 
         if not self.is_pass_exists(pass_path):
-            app_response = AppResponse(False, f"Pass path does not exist: {pass_path}")
-            logger.error(app_response.result_info)
-            return app_response
+            result = AppResult (False, f"Pass path does not exist: {pass_path}")
+            logger.error(result.info)
+            return result
 
         result = self._insert_pass_data(pass_path, passphrase)
-        return AppResponse(result)
+        return AppResult(result)
 
-    def edit_append(self, pass_path: str, passphrase: str) -> AppResponse:
+    def edit_append(self, pass_path: str, passphrase: str) -> AppResult:
         if not self.auth.is_active:
-            return AppResponse(False, "Pass session not activated")
+            return AppResult(False, "Pass session not activated")
 
         if not self.is_pass_exists(pass_path):
-            app_response = AppResponse(False, f"Pass path does not exist: {pass_path}")
-            logger.error(app_response.result_info)
-            return app_response
+            result = AppResult(False, f"Pass path does not exist: {pass_path}")
+            logger.error(result.info)
+            return result
 
         pass_data = self._acquire_pass_data(pass_path)
         result = self._insert_pass_data(pass_path, f"{pass_data}{passphrase}")
-        return AppResponse(result)
+        return AppResult(result)
 
     def is_pass_exists(self, pass_path: str) -> bool:
         try:

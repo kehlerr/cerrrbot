@@ -1,6 +1,6 @@
 import asyncio
 from dataclasses import dataclass
-from typing import List, Optional, Union
+from typing import Any, List, Optional, Union
 
 from aiogram import types
 from aiogram.fsm.context import FSMContext
@@ -21,9 +21,13 @@ class ContentData:
 
 
 @dataclass
-class AppResponse:
+class AppResult:
     status: Union[int, bool]
-    result_info: Optional[str] = ""
+    info: Optional[str] = ""
+    data: Optional[Any] = None
+
+    def __bool__(self):
+        return self.status
 
 
 async def navigate_content(query, callback_data: UserAction, state: FSMContext):

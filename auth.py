@@ -4,7 +4,7 @@ from typing import Optional
 
 import pyotp
 
-from common import AppResponse
+from common import AppResult
 from settings import OTP_SECRET_KEY
 
 logger = logging.getLogger(__name__)
@@ -20,23 +20,19 @@ class AuthSession:
         self._active_until = 0
         self._ttl = ttl or self.default_ttl
 
-    def try_authorize(self, passphrase: str) -> AppResponse:
+    def try_authorize(self, passphrase: str) -> AppResult:
         if not otp.verify(passphrase):
-            app_response = AppResponse(
-                False, f"Invalid passphrase for authorization: {passphrase}"
-            )
-            logger.warning(app_response.result_info)
-            return app_response
+            result = AppResult(False, f"Invalid passphrase for authorization: {passphrase}")
+            logger.warning(result.info)
+            return result
 
         if self.is_active:
-            app_response = AppResponse(
-                False, "Tried to activate already active session"
-            )
-            logger.warning(app_response.result_info)
-            return app_response
+            result = AppResult(False, "Tried to activate already active session")
+            logger.warning(result.info)
+            return result
 
         self.authorize()
-        return AppResponse(True)
+        return AppResult(True)
 
     def authorize(self):
         self._active_until = datetime.now().timestamp() + self._ttl
