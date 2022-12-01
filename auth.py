@@ -22,7 +22,9 @@ class AuthSession:
 
     def try_authorize(self, passphrase: str) -> AppResult:
         if not otp.verify(passphrase):
-            result = AppResult(False, f"Invalid passphrase for authorization: {passphrase}")
+            result = AppResult(
+                False, f"Invalid passphrase for authorization: {passphrase}"
+            )
             logger.warning(result.info)
             return result
 

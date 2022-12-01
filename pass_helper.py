@@ -5,13 +5,14 @@ from typing import Any, Dict, Optional, Union
 
 from auth import AuthSession
 from common import AppResult
-from settings import GPG_EXT, PASS_STORE_DIR
+from settings import PASS_STORE_DIR
 
 logger = logging.getLogger(__name__)
 
 
 class PassApp:
     APP_CODE = "PASS"
+    GPG_EXT = "gpg"
 
     def __init__(self):
         self._passes_data = {}
@@ -34,7 +35,7 @@ class PassApp:
     def add_new_pass(self, pass_path: str, passphrase: str) -> AppResult:
         if self.is_pass_exists(pass_path):
             result = AppResult(f"Pass path already exists: {pass_path}", False)
-            logger.error(app_result.info)
+            logger.error(result.info)
             return result
 
         result = self._insert_pass_data(pass_path, passphrase)
@@ -45,7 +46,7 @@ class PassApp:
             return AppResult(False, "Pass session not activated")
 
         if not self.is_pass_exists(pass_path):
-            result = AppResult (False, f"Pass path does not exist: {pass_path}")
+            result = AppResult(False, f"Pass path does not exist: {pass_path}")
             logger.error(result.info)
             return result
 
@@ -67,7 +68,7 @@ class PassApp:
 
     def is_pass_exists(self, pass_path: str) -> bool:
         try:
-            if self._get_pass_filepath(pass_path).endswith(GPG_EXT):
+            if self._get_pass_filepath(pass_path).endswith(self.GPG_EXT):
                 return True
         except PassPathNotExists:
             pass
@@ -137,7 +138,7 @@ class PassApp:
         if not pass_path:
             raise PassPathEmptyError
 
-        pass_filepath = os.path.join(PASS_STORE_DIR, f"{pass_path}.{GPG_EXT}")
+        pass_filepath = os.path.join(PASS_STORE_DIR, f"{pass_path}.{self.GPG_EXT}")
         if not os.path.isfile(pass_filepath):
             raise PassPathNotExists
 

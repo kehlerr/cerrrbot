@@ -10,15 +10,13 @@ from aiogram.filters import Command, callback_data
 from aiogram.fsm.context import FSMContext
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
+import db_utils
+import savmes
 from commands_pass import pass_form_router
 from common import navigate_content
 from constants import Action, UserAction
-from db_utils import get_mongo_db
 from keyboards import Keyboards as kbs
 from settings import TOKEN
-
-import savmes
-
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -40,6 +38,7 @@ main_router.callback_query.register(
 )
 
 others_router = Router()
+
 
 class MenuApp(str, Enum):
     pass_app = "Pass app"
@@ -81,6 +80,7 @@ async def show_rtorrent_menu(message: types.Message, bot: Bot, event_chat):
 async def main_menu(message: types.Message):
     await show_main_menu(message)
 
+
 @others_router.message()
 async def common_msg(message: types.Message, bot: Bot):
     message_data = message.dict(exclude_none=True, exclude_defaults=True)
@@ -89,7 +89,9 @@ async def common_msg(message: types.Message, bot: Bot):
     result = await savmes.add_new_message(message_data)
 
     if not result:
-        logger.error("Error occured while adding received message: {}".format(result.info))
+        logger.error(
+            "Error occured while adding received message: {}".format(result.info)
+        )
         return
 
     saved_message_id = result.data
@@ -118,16 +120,18 @@ async def scheduled(wait_for=150):
 
 async def main():
 
+    logger.info("Checking db...")
+    db_info = db_utils.check_connection()
+    if db_info:
+        logger.debug("Got db:{}".format(db_info))
+    else:
+        logger.error("DB is down")
+
     logger.info("Start bot...")
     bot = Bot(token=TOKEN)
 
     loop = asyncio.get_event_loop()
     loop.create_task(scheduled())
-
-    bot.db = get_mongo_db()
-    logger.debug("Got db:{}".format(bot.db))
-
-    saved_messages_collection_db = bot.db["saved_messages"]
 
     dp = Dispatcher()
     dp.include_router(main_router)

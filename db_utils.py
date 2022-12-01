@@ -1,10 +1,11 @@
 import logging
-import pymongo
-from dataclasses import dataclass
-from typing import Any, Dict, List, Union, Optional
-from common import AppResult
-from settings import MONGO_DB_HOST,MONGO_DB_PORT, MONGO_DB_NAME
+from typing import Any, Dict, List, Optional, Union
 
+import pymongo
+from pymongo.errors import ServerSelectionTimeoutError
+
+from common import AppResult
+from settings import MONGO_DB_HOST, MONGO_DB_NAME, MONGO_DB_PORT
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +19,7 @@ class CollectionModel:
         return add_document(cls.name, entry_data)
 
     @classmethod
-    def update_document(cls, entry_id: str, new_values: Dict[str, Any]) -> AppResult:
+    def update_document(cls, collection_name: str, entry_id: str, new_values: Dict[str, Any]) -> AppResult:
         db = get_mongo_db()
         collection = db[collection_name]
 
@@ -41,7 +42,9 @@ class SavedMessagesCollection(CollectionModel):
     @classmethod
     def add_document(cls, entry_data: Dict[str, Any]) -> AppResult:
         if not entry_data.get("_id"):
-            return AppResult(False, "Invalid new entry_data, missed _id field:{}".format(entry_data))
+            return AppResult(
+                False, "Invalid new entry_data, missed _id field:{}".format(entry_data)
+            )
 
         return super().add_document(entry_data)
 
@@ -51,14 +54,20 @@ def init_db():
     db = get_mongo_db()
     existing_collections = db.list_collection_names()
     if existing_collections:
-        logger.warning("DB already initialized with next collections:{}".format(existing_collections))
+        logger.warning(
+            "DB already initialized with next collections:{}".format(
+                existing_collections
+            )
+        )
         return
 
     for collection_config in {SavedMessagesCollection, NewMessagesCollection}:
         db.create_collection(collection_config.name)
 
 
-def del_documents(collection_name: str, documents_id: Union[str, List[str]]) -> AppResult:
+def del_documents(
+    collection_name: str, documents_id: Union[str, List[str]]
+) -> AppResult:
     if isinstance(documents_id, str):
         documents_id = [documents_id]
 
@@ -77,11 +86,24 @@ def add_document(collection_name: str, entry_data: Dict[str, Any]) -> AppResult:
     return AppResult(True, data=result)
 
 
+def check_connection() -> bool:
+    client = _get_client()
+
+    try:
+        return client.server_info()
+    except ServerSelectionTimeoutError:
+        return False
+
+
 def get_mongo_db():
-    client = pymongo.MongoClient(MONGO_DB_HOST, MONGO_DB_PORT)
+    client = _get_client()
     return client[MONGO_DB_NAME]
 
 
-if __name__ == "__main__":
-    result = NewMessagesCollection.add_document({"olololo": "kekekekek"})
-    print(result.data)
+def _get_client():
+    return pymongo.MongoClient(
+        MONGO_DB_HOST,
+        MONGO_DB_PORT,
+        serverSelectionTimeoutMS=15,
+        connectTimeoutMS=15000,
+    )

@@ -1,8 +1,9 @@
 from typing import Any, Dict
+
 from aiogram import Bot
-from common import AppResult
 
 import db_utils as db
+from common import AppResult
 
 
 async def add_new_message(message: Dict[str, Any]) -> AppResult:

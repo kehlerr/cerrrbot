@@ -63,7 +63,7 @@ async def show_nav_content(
 
         await state.update_data(nav_idx=nav_idx)
 
-    data_part = content.data[nav_idx: nav_idx + content_limit]
+    data_part = content.data[nav_idx : nav_idx + content_limit]
     answer_text = "\n".join(data_part)
 
     reply_markup = reply_markup or kbs.nav_menu
