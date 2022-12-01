@@ -1,4 +1,5 @@
 import logging
+import bson
 from typing import Any, Dict, List, Optional, Union
 
 import pymongo
@@ -19,15 +20,23 @@ class CollectionModel:
         return add_document(cls.name, entry_data)
 
     @classmethod
-    def update_document(cls, collection_name: str, entry_id: str, new_values: Dict[str, Any]) -> AppResult:
+    def update_document(cls, entry_id: str, new_values: Dict[str, Any]) -> AppResult:
         db = get_mongo_db()
-        collection = db[collection_name]
+        collection = db[cls.name]
 
         if new_values:
             try:
-                collection.update_one({"_id": entry_id}, {"$set": new_values})
+                _id = bson.objectid.ObjectId(entry_id)
+            except bson.errors.InvalidId:
+                _id = entry_id
+
+            try:
+                result = collection.update_one({"_id": _id}, {"$set": new_values})
             except Exception as exc:
                 return AppResult(False, exc)
+
+            if result.modified_count != 1:
+                return AppResult(False, "None of documents not modified")
 
         return AppResult(True)
 

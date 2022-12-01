@@ -51,7 +51,6 @@ class MenuAppData(callback_data.CallbackData, prefix="menu"):
 
 @main_router.message(Command(commands=["pass", "pass_menu"]))
 @main_router.callback_query(MenuAppData.filter(F.app_name == MenuApp.pass_app))
-@main_router.callback_query(UserAction.filter(F.action == Action.cancel))
 async def show_pass_menu(
     message: types.Message, bot: Bot, state: FSMContext, event_chat
 ):
@@ -83,8 +82,8 @@ async def main_menu(message: types.Message):
 
 @others_router.message()
 async def common_msg(message: types.Message, bot: Bot):
-    message_data = message.dict(exclude_none=True, exclude_defaults=True)
-    logger.info("Received message:{}".format(message_data))
+    message_data = message.dict(exclude_none=True, exclude_defaults=True, exclude=savmes.EXCLUDE_MESSAGE_FIELDS)
+    logger.debug("Received message: {}".format(message))
 
     result = await savmes.add_new_message(message_data)
 
@@ -94,8 +93,10 @@ async def common_msg(message: types.Message, bot: Bot):
         )
         return
 
-    saved_message_id = result.data
+    saved_message_id = str(result.data)
     logger.info("Saved new message with _id:[{}]".format(saved_message_id))
+
+    await message.reply("Choose action for this message:", reply_markup=savmes.message_actions_menu_kb(saved_message_id))
 
 
 async def show_main_menu(message: types.Message):
