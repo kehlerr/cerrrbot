@@ -29,6 +29,18 @@ class AppResult:
     def __bool__(self):
         return self.status
 
+    def merge(self, *other_results) -> None:
+        if not self.status:
+            return
+
+        for result in other_results:
+            if not result.status:
+                self.status = result.status
+                self.info = result.info
+                self.data = self.data or {}
+                self.data.update(result.data or {})
+                return
+
 
 async def navigate_content(query, callback_data: UserAction, state: FSMContext):
     direction = 1 if callback_data.action == Action.nav_next else -1

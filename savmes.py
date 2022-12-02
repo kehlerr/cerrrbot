@@ -1,12 +1,11 @@
 import logging
 from enum import Enum
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 from dataclasses import dataclass, asdict
 from datetime import datetime
 
-from aiogram import Bot, types
-from aiogram.filters import Command, callback_data
-from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram import Bot
+from aiogram.types import ContentType
 
 import db_utils as db
 from common import AppResult
@@ -15,43 +14,25 @@ from common import AppResult
 logger = logging.getLogger(__name__)
 
 
-class MessageActions(int, Enum):
-    DELETE = 0
-    SAVE = 1
-    DOWNLOAD_FILE = 2
-    NOTE = 3
-
-caption_by_action = {
-    MessageActions.DELETE: "Delete",
-    MessageActions.SAVE: "Save",
-    MessageActions.DOWNLOAD_FILE: "Download",
-    MessageActions.NOTE: "Note",
-}
-
-class SaveMessageData(callback_data.CallbackData, prefix="savmes_menu"):
-    action: MessageActions
-    message_id: str
-
+class MessageActions(str, Enum):
+    DELETE = "Delete"
+    SAVE = "Save"
+    DOWNLOAD_FILE = "Download"
+    DOWNLOAD_ALL = "Download all"
+    DOWNLOAD_DELAY = "Download delay"
+    NOTE = "Note"
+    TODO = "Note ToDo"
+    BOOKMARK = "Add bookmark"
 
 
 @dataclass
 class CB_MessageInfo:
     action: int = MessageActions.DELETE
-    expire_at: int = 0
+    perform_action_at: int = 0
+    common_group_key: Optional[str] = None
 
 
-EXCLUDE_MESSAGE_FIELDS = {"chat": {"first_name", "last_name"}, "from_user": {"first_name", "last_name", "language_code"}}
-
-DEFAULT_MESSAGE_TTL = 60*60*24*7
-
-
-async def add_new_message(message_data: Dict[str, Any]) -> AppResult:
-    expire_at = int(datetime.now().timestamp()) + DEFAULT_MESSAGE_TTL
-    message_info = CB_MessageInfo(expire_at=expire_at)
-    message_data["cb_message_info"] = asdict(message_info)
-
-    logger.info("Adding message: {}".format(message_data))
-    return db.NewMessagesCollection.add_document(message_data)
+COMMON_GROUP_KEYS = {"media_group_id",}
 
 
 async def update_action_for_message(document_message_id: str, new_action: int):
@@ -82,11 +63,128 @@ async def download_file(file_id: str, bot: Bot) -> AppResult:
     return AppResult(True)
 
 
-def message_actions_menu_kb(message_id: str) -> types.InlineKeyboardMarkup:
-    kb_builder = InlineKeyboardBuilder()
+class ContentStrategy:
+    DEFAULT_MESSAGE_TTL = 15*60
+    DEFAULT_ACTION = MessageActions.DELETE
 
-    for action in MessageActions:
-        kb_builder.button(
-            text=caption_by_action[action], callback_data=SaveMessageData(action=action.value, message_id=message_id)
+    async def perform_action(cls, message_id: str, code: int) -> AppResult:
+        action_method = cls._get_action_by_code(code)
+        result = await action_method(message_id)
+        return result
+
+    @classmethod
+    def _get_action_by_code(cls, code: MessageActions) -> Optional[Callable]:
+        if code == MessageActions.SAVE:
+            return cls.save
+        elif code == MessageActions.DELETE:
+            return cls.delete
+
+        return None
+
+    @classmethod
+    async def save(self, message_id) -> AppResult:
+        message_data = db.NewMessagesCollection.get_document(message_id)
+        if not message_data:
+            return AppResult(False, "Message with id: {} not found".format(message_id))
+
+        add_result = db.SavedMessagesCollection.add_document(message_data)
+        del_result = db.NewMessagesCollection.del_document(message_id)
+        common_result = add_result.merge(del_result)
+        return common_result
+
+    @classmethod
+    async def delete(self):
+        pass
+
+    @classmethod
+    async def add_new_message(cls, message_data: Dict[str, Any]) -> AppResult:
+        perform_action_at = int(datetime.now().timestamp()) + cls.DEFAULT_MESSAGE_TTL
+
+        common_group_key = None
+        for key in COMMON_GROUP_KEYS:
+            if key in message_data:
+                common_group_key = key
+                break
+
+        message_info = CB_MessageInfo(
+            action=cls.DEFAULT_ACTION,
+            perform_action_at=perform_action_at,
+            common_group_key=common_group_key
         )
-    return kb_builder.as_markup()
+        message_data["cb_message_info"] = asdict(message_info)
+
+        logger.info("Adding message: {}".format(message_data))
+        add_result = db.NewMessagesCollection.add_document(message_data)
+        if add_result:
+            if not common_group_key or not db.NewMessagesCollection.exists_document_in_group(common_group_key, message_data[common_group_key]):
+                add_result.data["need_reply"] = True
+            logger.info("Saved new message with _id:[{}]".format(str(add_result.data["_id"])))
+        else:
+            logger.error(
+                "Error occured while adding received message: {}".format(add_result.info)
+            )
+
+        return add_result
+
+
+cls_strategy_by_content_type = {
+    ContentType.TEXT: ContentStrategy,
+    ContentType.PHOTO: ContentStrategy,
+    ContentType.VIDEO: ContentStrategy,
+    ContentType.ANIMATION: ContentStrategy,
+    ContentType.AUDIO: ContentStrategy,
+    ContentType.STICKER: ContentStrategy,
+    ContentType.VIDEO_NOTE: ContentStrategy,
+    ContentType.VOICE: ContentStrategy,
+}
+
+
+def perform_content_action(content_action_data: Any):
+    cls_strategy = cls_strategy_by_content_type.get(content_action_data.content_type, ContentStrategy)
+    cls_strategy.perform_action(content_action_data.message_id, content_action_data.action)
+
+
+def check_actions_on_new_messages():
+    pass
+
+
+########
+#   Text:
+#       - Dump
+#       - Note
+#       - ToDo
+#       - Delete
+#   Link:
+#       - Dump
+#       - Note
+#       - Bookmark
+#       - Delete
+########
+#   Photo:
+#       - Save (all)
+#       - Delete
+#   Video:
+#       - Save
+#       - Delay save
+#       - Delete
+########
+#   Video note:
+#       - Save
+#       - Delete
+#   Voice:
+#       - Save
+#       - Delete
+#   Music:
+#       - Save
+#       - Delete
+#######
+#   Sticker:
+#       - Save
+#       - Save all from stickerpack
+#       - Delete
+#######
+#   Delete:
+#       - Delete now
+#       - Delete in 1 hour
+#       - Delete tomorrow
+#       - Reset delete timer

@@ -16,8 +16,8 @@ class CollectionModel:
     ttl: Optional[int] = 0
 
     @classmethod
-    def add_document(cls, entry_data: Dict[str, Any]):
-        return add_document(cls.name, entry_data)
+    def add_document(cls, entry_data: Dict[str, Any]) -> AppResult:
+        return _add_document(cls.name, entry_data)
 
     @classmethod
     def update_document(cls, entry_id: str, new_values: Dict[str, Any]) -> AppResult:
@@ -39,6 +39,22 @@ class CollectionModel:
                 return AppResult(False, "None of documents not modified")
 
         return AppResult(True)
+
+    @classmethod
+    def get_document(cls, _id: str) -> Optional[dict]:
+        db = get_mongo_db()
+        collection = db[cls.name]
+        return collection.find_one(_id)
+
+    @classmethod
+    def del_document(cls, _id: str) -> AppResult:
+        return _del_documents(cls.name, [_id])
+
+    @classmethod
+    def exists_document_in_group(cls, key, value):
+        db = get_mongo_db()
+        collection = db[cls.name]
+        return collection.count_documents({key: value}) > 1
 
 
 class NewMessagesCollection(CollectionModel):
@@ -74,25 +90,28 @@ def init_db():
         db.create_collection(collection_config.name)
 
 
-def del_documents(
-    collection_name: str, documents_id: Union[str, List[str]]
-) -> AppResult:
-    if isinstance(documents_id, str):
-        documents_id = [documents_id]
-
-    pass
-
-
-def add_document(collection_name: str, entry_data: Dict[str, Any]) -> AppResult:
+def _del_documents(collection_name: str, document_ids: List[str]) -> AppResult:
     db = get_mongo_db()
     collection = db[collection_name]
 
     try:
-        result = collection.insert_one(entry_data).inserted_id
+        deleted_count = collection.delete_many({"_id": {"$in": document_ids}}).deleted_count
     except Exception as exc:
         return AppResult(False, exc)
 
-    return AppResult(True, data=result)
+    return AppResult(deleted_count==len(document_ids))
+
+
+def _add_document(collection_name: str, entry_data: Dict[str, Any]) -> AppResult:
+    db = get_mongo_db()
+    collection = db[collection_name]
+
+    try:
+        inserted_id = collection.insert_one(entry_data).inserted_id
+    except Exception as exc:
+        return AppResult(False, exc)
+
+    return AppResult(True, data={"_id": str(inserted_id)})
 
 
 def check_connection() -> bool:
@@ -113,6 +132,6 @@ def _get_client():
     return pymongo.MongoClient(
         MONGO_DB_HOST,
         MONGO_DB_PORT,
-        serverSelectionTimeoutMS=15,
+        serverSelectionTimeoutMS=2000,
         connectTimeoutMS=15000,
     )

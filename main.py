@@ -13,6 +13,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 import db_utils
 import savmes
 from commands_pass import pass_form_router
+from commands_savmes import savmes_router
 from common import navigate_content
 from constants import Action, UserAction
 from keyboards import Keyboards as kbs
@@ -80,25 +81,6 @@ async def main_menu(message: types.Message):
     await show_main_menu(message)
 
 
-@others_router.message()
-async def common_msg(message: types.Message, bot: Bot):
-    message_data = message.dict(exclude_none=True, exclude_defaults=True, exclude=savmes.EXCLUDE_MESSAGE_FIELDS)
-    logger.debug("Received message: {}".format(message))
-
-    result = await savmes.add_new_message(message_data)
-
-    if not result:
-        logger.error(
-            "Error occured while adding received message: {}".format(result.info)
-        )
-        return
-
-    saved_message_id = str(result.data)
-    logger.info("Saved new message with _id:[{}]".format(saved_message_id))
-
-    await message.reply("Choose action for this message:", reply_markup=savmes.message_actions_menu_kb(saved_message_id))
-
-
 async def show_main_menu(message: types.Message):
     keyboard = main_menu_kb()
     await message.answer("Welcome, master", reply_markup=keyboard)
@@ -116,6 +98,7 @@ def main_menu_kb() -> types.InlineKeyboardMarkup:
 async def scheduled(wait_for=150):
     while True:
         logger.debug("Waiting for new tasks...")
+        savmes.check_actions_on_new_messages()
         await asyncio.sleep(wait_for)
 
 
@@ -137,6 +120,7 @@ async def main():
     dp = Dispatcher()
     dp.include_router(main_router)
     dp.include_router(pass_form_router)
+    dp.include_router(savmes_router)
     dp.include_router(others_router)
     await dp.start_polling(bot)
     logger.info("Bot started")
