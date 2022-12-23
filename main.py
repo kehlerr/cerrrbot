@@ -95,11 +95,11 @@ def main_menu_kb() -> types.InlineKeyboardMarkup:
     return kb_builder.as_markup()
 
 
-async def scheduled(wait_for=150):
+async def scheduled(wait_for=15):
     while True:
         logger.debug("Waiting for new tasks...")
-        savmes.check_actions_on_new_messages()
         await asyncio.sleep(wait_for)
+        await savmes.check_actions_on_new_messages()
 
 
 async def main():

@@ -1,5 +1,6 @@
 import logging
 import bson
+from bson.objectid import ObjectId
 from typing import Any, Dict, List, Optional, Union
 
 import pymongo
@@ -26,7 +27,7 @@ class CollectionModel:
 
         if new_values:
             try:
-                _id = bson.objectid.ObjectId(entry_id)
+                _id = ObjectId(entry_id)
             except bson.errors.InvalidId:
                 _id = entry_id
 
@@ -44,17 +45,23 @@ class CollectionModel:
     def get_document(cls, _id: str) -> Optional[dict]:
         db = get_mongo_db()
         collection = db[cls.name]
-        return collection.find_one(_id)
+        return collection.find_one(ObjectId(_id))
 
     @classmethod
     def del_document(cls, _id: str) -> AppResult:
-        return _del_documents(cls.name, [_id])
+        return _del_documents(cls.name, [ObjectId(_id)])
 
     @classmethod
     def exists_document_in_group(cls, key, value):
         db = get_mongo_db()
         collection = db[cls.name]
         return collection.count_documents({key: value}) > 1
+
+    @classmethod
+    def get_documents_by_filter(cls, filter_):
+        db = get_mongo_db()
+        collection = db[cls.name]
+        return list(collection.find(filter_))
 
 
 class NewMessagesCollection(CollectionModel):

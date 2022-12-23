@@ -1,17 +1,18 @@
 import logging
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Callable
 from dataclasses import dataclass, asdict
 from datetime import datetime
 
 from aiogram import Bot
-from aiogram.types import ContentType
+from aiogram.types import ContentType, Message
 
 import db_utils as db
 from common import AppResult
 
 
 logger = logging.getLogger(__name__)
+logger = logging.getLogger("__main__")
 
 
 class MessageActions(str, Enum):
@@ -27,20 +28,25 @@ class MessageActions(str, Enum):
 
 @dataclass
 class CB_MessageInfo:
-    action: int = MessageActions.DELETE
+    action: str = MessageActions.DELETE
     perform_action_at: int = 0
     common_group_key: Optional[str] = None
+    content_type: ContentType = ContentType.TEXT
 
 
 COMMON_GROUP_KEYS = {"media_group_id",}
 
 
 async def update_action_for_message(document_message_id: str, new_action: int):
-    updated_data = asdict(CB_MessageInfo(action=action))
+    updated_data = asdict(CB_MessageInfo(action=new_action))
     if new_action == MessageActions.SAVE:
         updated_data.pop("expire_at", None)
 
-    return db.NewMessagesCollection.update_document(document_message_id, updated_data)
+    return db.NewMessagesCollection.update_document(document_message_id, {"cb_message_info": updated_data})
+
+
+async def set_action_message_id(document_message_id: str, action_message_id):
+    return db.NewMessagesCollection.update_document(document_message_id, {"action_message_id": action_message_id})
 
 
 async def process_saved_message():
@@ -64,12 +70,14 @@ async def download_file(file_id: str, bot: Bot) -> AppResult:
 
 
 class ContentStrategy:
-    DEFAULT_MESSAGE_TTL = 15*60
+    DEFAULT_MESSAGE_TTL = 30*60
     DEFAULT_ACTION = MessageActions.DELETE
 
-    async def perform_action(cls, message_id: str, code: int) -> AppResult:
-        action_method = cls._get_action_by_code(code)
-        result = await action_method(message_id)
+    @classmethod
+    async def perform_action(cls, action: str, message_id: str, bot: Bot) -> AppResult:
+        print("ACTION_IS:",action)
+        action_method = cls._get_action_by_code(action)
+        result = await action_method(message_id, bot)
         return result
 
     @classmethod
@@ -93,11 +101,35 @@ class ContentStrategy:
         return common_result
 
     @classmethod
-    async def delete(self):
-        pass
+    async def delete(self, message_id: str, bot: Bot) -> AppResult:
+        message_data = db.NewMessagesCollection.get_document(message_id)
+        if not message_data:
+            return AppResult(False, "[{}] Message not found".format(message_id))
+
+        chat_id = message_data["chat"]["id"]
+        try:
+            await bot.delete_message(chat_id, message_data["action_message_id"])
+        except KeyError:
+            logger.info("[{}] Not found action message, no need to delete it".format(message_id))
+        except Exception as exc:
+            logger.error(exc)
+            return AppResult(False, str(exc))
+
+        try:
+            result = await bot.delete_message(chat_id, message_data["message_id"])
+        except Exception as exc:
+            logger.error(exc)
+            return AppResult(False, str(exc))
+
+        if not result:
+            return AppResult(result)
+
+        result = db.NewMessagesCollection.del_document(message_id)
+
+        return AppResult(result)
 
     @classmethod
-    async def add_new_message(cls, message_data: Dict[str, Any]) -> AppResult:
+    async def add_new_message(cls, message_data: Dict[str, Any], content_type: ContentType) -> AppResult:
         perform_action_at = int(datetime.now().timestamp()) + cls.DEFAULT_MESSAGE_TTL
 
         common_group_key = None
@@ -109,7 +141,8 @@ class ContentStrategy:
         message_info = CB_MessageInfo(
             action=cls.DEFAULT_ACTION,
             perform_action_at=perform_action_at,
-            common_group_key=common_group_key
+            common_group_key=common_group_key,
+            content_type=content_type
         )
         message_data["cb_message_info"] = asdict(message_info)
 
@@ -139,13 +172,23 @@ cls_strategy_by_content_type = {
 }
 
 
-def perform_content_action(content_action_data: Any):
-    cls_strategy = cls_strategy_by_content_type.get(content_action_data.content_type, ContentStrategy)
-    cls_strategy.perform_action(content_action_data.message_id, content_action_data.action)
+async def perform_message_action(message_id: str, *args):
+    message_data = db.NewMessagesCollection.get_document(message_id)
+    return await _perform_message_action(message_data, *args)
 
 
-def check_actions_on_new_messages():
-    pass
+async def _perform_message_action(message_data: dict, bot: Bot):
+    cb_message_info = CB_MessageInfo(message_data["cb_message_info"])
+    cls_strategy = cls_strategy_by_content_type.get(cb_message_info.content_type, ContentStrategy)
+    return await cls_strategy.perform_action(cb_message_info.action, message_data["_id"], bot)
+
+
+async def check_actions_on_new_messages():
+    filter_search = {"cb_message_info.perform_action_at": {"$lt": int(datetime.now().timestamp())}}
+    messages = db.NewMessagesCollection.get_documents_by_filter(filter_search)
+
+    for message in messages:
+        cb_message_info = CB_MessageInfo(message["cb_message_info"])
 
 
 ########
