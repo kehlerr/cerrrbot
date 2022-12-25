@@ -35,7 +35,7 @@ class PassApp:
     def add_new_pass(self, pass_path: str, passphrase: str) -> AppResult:
         if self.is_pass_exists(pass_path):
             result = AppResult(f"Pass path already exists: {pass_path}", False)
-            logger.error(result.info)
+            logger.error(result)
             return result
 
         result = self._insert_pass_data(pass_path, passphrase)
@@ -47,7 +47,7 @@ class PassApp:
 
         if not self.is_pass_exists(pass_path):
             result = AppResult(False, f"Pass path does not exist: {pass_path}")
-            logger.error(result.info)
+            logger.error(result)
             return result
 
         result = self._insert_pass_data(pass_path, passphrase)
@@ -59,7 +59,7 @@ class PassApp:
 
         if not self.is_pass_exists(pass_path):
             result = AppResult(False, f"Pass path does not exist: {pass_path}")
-            logger.error(result.info)
+            logger.error(result)
             return result
 
         pass_data = self._acquire_pass_data(pass_path)

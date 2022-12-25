@@ -15,19 +15,24 @@ logger = logging.getLogger("__main__")
 savmes_router = Router()
 
 actions_by_content_type = {
-        ContentType.TEXT: (MessageActions.SAVE, MessageActions.NOTE, MessageActions.TODO, MessageActions.DELETE),
-        ContentType.PHOTO: (MessageActions.DOWNLOAD_FILE, MessageActions.DOWNLOAD_ALL, MessageActions.DELETE),
-        ContentType.VIDEO: (MessageActions.DOWNLOAD_FILE, MessageActions.DOWNLOAD_ALL, MessageActions.DOWNLOAD_DELAY, MessageActions.DELETE),
-        ContentType.ANIMATION: (MessageActions.DOWNLOAD_FILE, MessageActions.DELETE),
-        ContentType.AUDIO: (MessageActions.DOWNLOAD_FILE, MessageActions.DELETE),
-        ContentType.STICKER: (MessageActions.DOWNLOAD_FILE, MessageActions.DOWNLOAD_ALL, MessageActions.DELETE),
-        ContentType.VIDEO_NOTE: (MessageActions.DOWNLOAD_FILE, MessageActions.DELETE),
-        ContentType.VOICE: (MessageActions.DOWNLOAD_FILE, MessageActions.DELETE),
+        ContentType.TEXT: (MessageActions.SAVE, MessageActions.NOTE, MessageActions.DELETE_REQUEST),
+        ContentType.PHOTO: (MessageActions.DOWNLOAD_FILE, MessageActions.DOWNLOAD_ALL, MessageActions.DELETE_REQUEST),
+        ContentType.VIDEO: (MessageActions.DOWNLOAD_FILE, MessageActions.DOWNLOAD_ALL, MessageActions.DOWNLOAD_DELAY, MessageActions.DELETE_REQUEST),
+        ContentType.ANIMATION: (MessageActions.DOWNLOAD_FILE, MessageActions.DELETE_REQUEST),
+        ContentType.AUDIO: (MessageActions.DOWNLOAD_FILE, MessageActions.DELETE_REQUEST),
+        ContentType.STICKER: (MessageActions.DOWNLOAD_FILE, MessageActions.DOWNLOAD_ALL, MessageActions.DELETE_REQUEST),
+        ContentType.VIDEO_NOTE: (MessageActions.DOWNLOAD_FILE, MessageActions.DELETE_REQUEST),
+        ContentType.VOICE: (MessageActions.DOWNLOAD_FILE, MessageActions.DELETE_REQUEST),
 }
 
 
 caption_by_action = {
-    MessageActions.DELETE: "Delete",
+    MessageActions.DELETE_REQUEST: "Delete",
+    MessageActions.DELETE_NOW: "Del now",
+    MessageActions.DELETE_30_MIN: "Del in 30 mins",
+    MessageActions.DELETE_12_HRS: "Del in 12 hours",
+    MessageActions.DELETE_48_HRS: "Del in 48 hours",
+    MessageActions.DELETE_FROM_CHAT: "Del from chat",
     MessageActions.SAVE: "Save",
     MessageActions.DOWNLOAD_FILE: "Download",
     MessageActions.DOWNLOAD_ALL: "Download all",
@@ -57,7 +62,7 @@ async def common_msg(message: types.Message, bot: Bot):
         saved_message_id = result.data["_id"]
         action_message = await message.reply(
             "Choose action for this message:",
-            reply_markup=message_actions_menu_kb(saved_message_id, message.content_type)
+            reply_markup=actions_menu_by_content_type_kb(saved_message_id, message.content_type)
         )
         await set_action_message_id(saved_message_id, action_message.message_id)
 
@@ -67,14 +72,22 @@ async def on_action_pressed(query: CallbackQuery, callback_data: SaveMessageData
     logger.info("Received data on chosen action: {}".format(callback_data))
     message_id = callback_data.message_id
     await update_action_for_message(message_id, callback_data.action)
-    await perform_message_action(message_id, kwargs["bot"])
+    result = await perform_message_action(message_id, kwargs["bot"])
+    if result:
+        next_actions = result.data.get("next_actions")
+        if next_actions:
+            next_markup = _build_message_actions_menu_kb(next_actions, message_id, callback_data.content_type)
+            await query.message.edit_reply_markup(next_markup)
 
 
-def message_actions_menu_kb(message_id: str, content_type: ContentType) -> types.InlineKeyboardMarkup:
+def actions_menu_by_content_type_kb(message_id: str, content_type: ContentType) -> types.InlineKeyboardMarkup:
     message_actions = actions_by_content_type.get(content_type, actions_by_content_type[ContentType.TEXT])
+    return _build_message_actions_menu_kb(message_actions, message_id, content_type)
 
+
+def _build_message_actions_menu_kb(actions: list, message_id: str, content_type: str) -> types.InlineKeyboardMarkup:
     kb_builder = InlineKeyboardBuilder()
-    for action in message_actions:
+    for action in actions:
         kb_builder.button(
             text=caption_by_action[action], callback_data=SaveMessageData(action=action, message_id=message_id, content_type=content_type)
         )

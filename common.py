@@ -1,5 +1,5 @@
 import asyncio
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, List, Optional, Union
 
 from aiogram import types
@@ -24,22 +24,24 @@ class ContentData:
 class AppResult:
     status: Union[int, bool]
     info: Optional[str] = ""
-    data: Optional[Any] = None
+    _info: list[str] = field(default_factory=lambda: [])
+    data: dict[Any] = field(default_factory=lambda: {})
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         return self.status
 
-    def merge(self, *other_results) -> None:
-        if not self.status:
-            return
+    def __str__(self) -> str:
+        _str = f"Result:{self.status}; {self.info}"
+        if self._info:
+            _str += "\n".join(self._info)
+        return _str
 
+    def merge(self, *other_results) -> None:
         for result in other_results:
             if not result.status:
                 self.status = result.status
-                self.info = result.info
-                self.data = self.data or {}
-                self.data.update(result.data or {})
-                return
+                self._info.append(result.info)
+                self.data.update(result.data)
 
 
 async def navigate_content(query, callback_data: UserAction, state: FSMContext):

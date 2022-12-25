@@ -25,12 +25,12 @@ class AuthSession:
             result = AppResult(
                 False, f"Invalid passphrase for authorization: {passphrase}"
             )
-            logger.warning(result.info)
+            logger.warning(result)
             return result
 
         if self.is_active:
             result = AppResult(False, "Tried to activate already active session")
-            logger.warning(result.info)
+            logger.warning(result)
             return result
 
         self.authorize()

@@ -95,11 +95,11 @@ def main_menu_kb() -> types.InlineKeyboardMarkup:
     return kb_builder.as_markup()
 
 
-async def scheduled(wait_for=15):
+async def scheduled(bot: Bot, wait_for: int = 15):
     while True:
         logger.debug("Waiting for new tasks...")
         await asyncio.sleep(wait_for)
-        await savmes.check_actions_on_new_messages()
+        await savmes.check_actions_on_new_messages(bot)
 
 
 async def main():
@@ -115,7 +115,7 @@ async def main():
     bot = Bot(token=TOKEN)
 
     loop = asyncio.get_event_loop()
-    loop.create_task(scheduled())
+    loop.create_task(scheduled(bot))
 
     dp = Dispatcher()
     dp.include_router(main_router)
