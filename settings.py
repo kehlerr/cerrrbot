@@ -1,5 +1,11 @@
 from decouple import config
 
+ALLOWED_USERS = config(
+    "ALLOWED_USERS", cast=lambda v: [int(s.strip()) for s in v.split(",")]
+)
+
+DATA_DIRECTORY_ROOT = config("DATA_DIRECTORY_ROOT")
+
 TOKEN = config("BOT_TOKEN")
 OTP_SECRET_KEY = config("OTP_SECRET_KEY")
 

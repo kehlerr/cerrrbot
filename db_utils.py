@@ -1,9 +1,9 @@
 import logging
-import bson
-from bson.objectid import ObjectId
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
+import bson
 import pymongo
+from bson.objectid import ObjectId
 from pymongo.errors import ServerSelectionTimeoutError
 
 from common import AppResult
@@ -102,11 +102,13 @@ def _del_documents(collection_name: str, document_ids: List[str]) -> AppResult:
     collection = db[collection_name]
 
     try:
-        deleted_count = collection.delete_many({"_id": {"$in": document_ids}}).deleted_count
+        deleted_count = collection.delete_many(
+            {"_id": {"$in": document_ids}}
+        ).deleted_count
     except Exception as exc:
         return AppResult(False, exc)
 
-    return AppResult(deleted_count==len(document_ids))
+    return AppResult(deleted_count == len(document_ids))
 
 
 def _add_document(collection_name: str, entry_data: Dict[str, Any]) -> AppResult:

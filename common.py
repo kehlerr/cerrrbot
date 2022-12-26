@@ -1,9 +1,12 @@
 import asyncio
+import logging
+import os
 from dataclasses import dataclass, field
-from typing import Any, List, Optional, Union
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Union
 
-from aiogram import types
+from aiogram import BaseMiddleware
 from aiogram.fsm.context import FSMContext
+from aiogram.types import Message
 
 from constants import (
     DEFAULT_PAGE_LIMIT,
@@ -12,6 +15,9 @@ from constants import (
     UserAction,
 )
 from keyboards import Keyboards as kbs
+from settings import ALLOWED_USERS, DATA_DIRECTORY_ROOT
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -22,7 +28,7 @@ class ContentData:
 
 @dataclass
 class AppResult:
-    status: Union[int, bool]
+    status: Union[int, bool] = True
     info: Optional[str] = ""
     _info: list[str] = field(default_factory=lambda: [])
     data: dict[Any] = field(default_factory=lambda: {})
@@ -40,7 +46,7 @@ class AppResult:
         for result in other_results:
             if not result.status:
                 self.status = result.status
-                self._info.append(result.info)
+                self._info.append(str(result.info))
                 self.data.update(result.data)
 
 
@@ -49,9 +55,7 @@ async def navigate_content(query, callback_data: UserAction, state: FSMContext):
     await show_nav_content(query.message, state, direction)
 
 
-async def show_nav_content(
-    message: types.Message, state: FSMContext, direction: int = 0
-):
+async def show_nav_content(message: Message, state: FSMContext, direction: int = 0):
     state_data = await state.get_data()
     content = state_data.get("content_data")
     if not content or not content.data:
@@ -89,11 +93,45 @@ async def show_nav_content(
         )
 
 
+class CheckUserMiddleware(BaseMiddleware):
+    async def __call__(
+        self,
+        handler: Callable[[Message, Dict[str, Any]], Awaitable[Any]],
+        message: Message,
+        data: Dict[str, Any],
+    ) -> Any:
+        user_sender = message.from_user
+        if user_sender.id in ALLOWED_USERS:
+            return await handler(message, data)
+
+        logger.warning(
+            "Someone tried to send message;\nUser: {};\nMessage: {}".format(
+                user_sender, message
+            )
+        )
+
+
 async def delete_messages_after_timeout(
-    messages: List[types.Message], timeout=DEFAULT_TIMEOUT_TO_DELETE_MESSAGES
+    messages: List[Message], timeout=DEFAULT_TIMEOUT_TO_DELETE_MESSAGES
 ):
     if timeout > 0:
         await asyncio.sleep(timeout)
 
     for message in messages:
         await message.delete()
+
+
+def create_directory(directory_name: str) -> AppResult:
+    directory_path = get_directory_path(directory_name)
+    try:
+        os.mkdir(directory_path)
+    except Exception as exc:
+        result = AppResult(False, exc)
+    else:
+        result = AppResult(True, data=directory_path)
+
+    return result
+
+
+def get_directory_path(directory_path: str) -> os.PathLike:
+    return os.path.join(DATA_DIRECTORY_ROOT, directory_path)

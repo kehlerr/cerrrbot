@@ -14,7 +14,7 @@ import db_utils
 import savmes
 from commands_pass import pass_form_router
 from commands_savmes import savmes_router
-from common import navigate_content
+from common import CheckUserMiddleware, navigate_content
 from constants import Action, UserAction
 from keyboards import Keyboards as kbs
 from settings import TOKEN
@@ -37,6 +37,7 @@ main_router.callback_query.register(
     navigate_content,
     UserAction.filter(F.action.in_({Action.nav_prev, Action.nav_next})),
 )
+main_router.message.middleware(CheckUserMiddleware())
 
 others_router = Router()
 
@@ -117,11 +118,12 @@ async def main():
     loop = asyncio.get_event_loop()
     loop.create_task(scheduled(bot))
 
+    main_router.include_router(pass_form_router)
+    main_router.include_router(savmes_router)
+    main_router.include_router(others_router)
+
     dp = Dispatcher()
     dp.include_router(main_router)
-    dp.include_router(pass_form_router)
-    dp.include_router(savmes_router)
-    dp.include_router(others_router)
     await dp.start_polling(bot)
     logger.info("Bot started")
 
