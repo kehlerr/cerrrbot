@@ -116,7 +116,7 @@ async def on_action_pressed(
     result = await perform_message_action(message_id, bot)
     if result:
         text_result = ""
-        next_actions = result.data.get("next_actions")
+        next_actions = isinstance(result.data, dict) and result.data.get("next_actions") or None
         if next_actions:
             next_markup = _build_message_actions_menu_kb(
                 next_actions, message_id, callback_data.content_type
