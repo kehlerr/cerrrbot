@@ -17,3 +17,5 @@ class UserAction(CallbackData, prefix="user"):
 
 DEFAULT_PAGE_LIMIT = 30
 DEFAULT_TIMEOUT_TO_DELETE_MESSAGES = 15
+
+CHECK_FOR_NEW_TASKS_TIMEOUT = 5

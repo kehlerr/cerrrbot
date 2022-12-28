@@ -15,21 +15,23 @@ import savmes
 from commands_pass import pass_form_router
 from commands_savmes import savmes_router
 from common import CheckUserMiddleware, navigate_content
-from constants import Action, UserAction
+from constants import Action, UserAction, CHECK_FOR_NEW_TASKS_TIMEOUT
 from keyboards import Keyboards as kbs
 from settings import TOKEN
 
-logger = logging.getLogger(__name__)
+
+logger = logging.getLogger("cerrrbot")
 logger.setLevel(logging.DEBUG)
-log_handler = TimedRotatingFileHandler("main.log", when="s", interval=10, backupCount=5)
 log_handler_stream = logging.StreamHandler()
 formatter = logging.Formatter(
     "[%(levelname)s][%(asctime)s] %(message)s", "%m/%d/%Y-%H:%M:%S"
 )
-log_handler.setFormatter(formatter)
 log_handler_stream.setFormatter(formatter)
-# logger.addHandler(log_handler)
 logger.addHandler(log_handler_stream)
+
+#log_handler = TimedRotatingFileHandler("main.log", when="s", interval=10, backupCount=5)
+#log_handler.setFormatter(formatter)
+#logger.addHandler(log_handler)
 
 
 main_router = Router()
@@ -39,8 +41,6 @@ main_router.callback_query.register(
 )
 main_router.message.middleware(CheckUserMiddleware())
 
-others_router = Router()
-
 
 class MenuApp(str, Enum):
     pass_app = "Pass app"
@@ -48,7 +48,7 @@ class MenuApp(str, Enum):
 
 
 class MenuAppData(callback_data.CallbackData, prefix="menu"):
-    app_name: MenuApp
+    app_name: str
 
 
 @main_router.message(Command(commands=["pass", "pass_menu"]))
@@ -96,16 +96,14 @@ def main_menu_kb() -> types.InlineKeyboardMarkup:
     return kb_builder.as_markup()
 
 
-async def scheduled(bot: Bot, wait_for: int = 15):
+async def scheduled(bot: Bot, wait_for: int = CHECK_FOR_NEW_TASKS_TIMEOUT):
     while True:
-        logger.debug("Waiting for new tasks...")
         await asyncio.sleep(wait_for)
         await savmes.check_actions_on_new_messages(bot)
 
 
 async def main():
-
-    logger.info("Checking db...")
+    logger.debug("Checking db...")
     db_info = db_utils.check_connection()
     if db_info:
         logger.debug("Got db:{}".format(db_info))
@@ -120,14 +118,15 @@ async def main():
 
     main_router.include_router(pass_form_router)
     main_router.include_router(savmes_router)
-    main_router.include_router(others_router)
 
     dp = Dispatcher()
     dp.include_router(main_router)
     await dp.start_polling(bot)
-    logger.info("Bot started")
 
 
 if __name__ == "__main__":
-    # logging.basicConfig(level=logging.INFO, stream=sys.stdout)
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except Exception as exc:
+        logger.exception(str(exc))
+        exit(-1)

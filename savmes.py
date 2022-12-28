@@ -15,8 +15,8 @@ import db_utils as db
 from common import AppResult, create_directory
 from settings import DATA_DIRECTORY_ROOT
 
-logger = logging.getLogger(__name__)
-logger = logging.getLogger("__main__")
+
+logger = logging.getLogger("cerrrbot")
 
 
 class MessageActions(str, Enum):
@@ -72,10 +72,6 @@ async def set_action_message_id(document_message_id: str, action_message_id):
     return db.NewMessagesCollection.update_document(
         document_message_id, {"action_message_id": action_message_id}
     )
-
-
-async def process_saved_message():
-    pass
 
 
 async def download_file(file_id: str, bot: Bot) -> AppResult:
@@ -411,11 +407,6 @@ def _find_message(message_id: str):
 #       - Delete
 #   Music:
 #       - Save
-#       - Delete
-#######
-#   Sticker:
-#       - Save
-#       - Save all from stickerpack
 #       - Delete
 #######
 #   Delete:

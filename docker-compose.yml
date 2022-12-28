@@ -7,7 +7,15 @@ services:
         depends_on:
             - mongo_db
         links:
-        - mongo_db
+            - mongo_db
+        volumes:
+            - ~/.local/share/cerrrbot/data/:/home/data/
+        environment:
+            - DATA_DIRECTORY_ROOT=/home/data/
+        restart: always
+
 
     mongo_db:
         image: mongo:latest
+        volumes:
+            - ~/.local/share/cerrrbot/data_mongo/:/data/db/

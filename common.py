@@ -17,7 +17,8 @@ from constants import (
 from keyboards import Keyboards as kbs
 from settings import ALLOWED_USERS, DATA_DIRECTORY_ROOT
 
-logger = logging.getLogger(__name__)
+
+logger = logging.getLogger("cerrrbot")
 
 
 @dataclass

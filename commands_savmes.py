@@ -13,8 +13,9 @@ from savmes import (
     update_action_for_message,
 )
 
-logger = logging.getLogger(__name__)
-logger = logging.getLogger("__main__")
+
+logger = logging.getLogger("cerrrbot")
+
 
 savmes_router = Router()
 
