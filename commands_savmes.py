@@ -13,7 +13,6 @@ from savmes import (
     update_action_for_message,
 )
 
-
 logger = logging.getLogger("cerrrbot")
 
 
@@ -40,26 +39,26 @@ actions_by_content_type = {
         MessageActions.DOWNLOAD_FILE,
         MessageActions.DELETE_REQUEST,
     ),
-    ContentType.AUDIO: (MessageActions.DOWNLOAD_FILE, MessageActions.DELETE_REQUEST),
     ContentType.STICKER: (
         MessageActions.DOWNLOAD_FILE,
         MessageActions.DOWNLOAD_ALL,
         MessageActions.DELETE_REQUEST,
     ),
+    ContentType.AUDIO: (MessageActions.DOWNLOAD_FILE, MessageActions.DELETE_REQUEST),
+    ContentType.VOICE: (MessageActions.DOWNLOAD_FILE, MessageActions.DELETE_REQUEST),
     ContentType.VIDEO_NOTE: (
         MessageActions.DOWNLOAD_FILE,
         MessageActions.DELETE_REQUEST,
     ),
-    ContentType.VOICE: (MessageActions.DOWNLOAD_FILE, MessageActions.DELETE_REQUEST),
 }
 
 
 caption_by_action = {
     MessageActions.DELETE_REQUEST: "Delete",
     MessageActions.DELETE_NOW: "Del now",
-    MessageActions.DELETE_30_MIN: "Del in 30 mins",
-    MessageActions.DELETE_12_HRS: "Del in 12 hours",
-    MessageActions.DELETE_48_HRS: "Del in 48 hours",
+    MessageActions.DELETE_1: "Del in 15m",
+    MessageActions.DELETE_2: "Del in 12H",
+    MessageActions.DELETE_3: "Del in 48H",
     MessageActions.DELETE_FROM_CHAT: "Del from chat",
     MessageActions.SAVE: "Save",
     MessageActions.DOWNLOAD_FILE: "Download",
@@ -71,11 +70,10 @@ caption_by_action = {
 }
 
 
-class SaveMessageData(CallbackData, prefix="savmes_menu"):
+class SaveMessageData(CallbackData, prefix="SVM"):
     action: MessageActions
     message_id: str
     content_type: str
-    query_message: types.Message = None
 
 
 EXCLUDE_MESSAGE_FIELDS = {
@@ -86,6 +84,7 @@ EXCLUDE_MESSAGE_FIELDS = {
 
 @savmes_router.message()
 async def common_msg(message: types.Message, bot: Bot):
+    print(message)
     message_data = message.dict(
         exclude_none=True, exclude_defaults=True, exclude=EXCLUDE_MESSAGE_FIELDS
     )
@@ -117,7 +116,9 @@ async def on_action_pressed(
     result = await perform_message_action(message_id, bot)
     if result:
         text_result = ""
-        next_actions = isinstance(result.data, dict) and result.data.get("next_actions") or None
+        next_actions = (
+            isinstance(result.data, dict) and result.data.get("next_actions") or None
+        )
         if next_actions:
             next_markup = _build_message_actions_menu_kb(
                 next_actions, message_id, callback_data.content_type

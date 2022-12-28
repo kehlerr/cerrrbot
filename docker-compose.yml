@@ -1,6 +1,7 @@
 version: "3.3"
 
 services:
+
     bot:
         build: .
         command: bash -c "python main.py"
@@ -12,8 +13,7 @@ services:
             - ~/.local/share/cerrrbot/data/:/home/data/
         environment:
             - DATA_DIRECTORY_ROOT=/home/data/
-        restart: always
-
+        restart: on-failure:15
 
     mongo_db:
         image: mongo:latest
