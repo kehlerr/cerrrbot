@@ -71,6 +71,12 @@ async def check_actions_on_new_messages(bot: Bot):
     return result
 
 
+async def add_new_message(message_data: Dict[str, Any], content_type: str) -> AppResult:
+    cls_strategy = cls_strategy_by_content_type.get(content_type, ContentStrategy)
+    result = await cls_strategy.add_new_message(message_data, content_type)
+    return result
+
+
 async def perform_message_action(message_id: str, *args):
     message_data, _ = _find_message(message_id)
     result = await _perform_message_action(message_data, *args)
@@ -101,7 +107,7 @@ class ContentStrategy:
         "media_group_id",
     }
 
-    POSSIBLE_ACTIONS = [MessageActions.SAVE, MessageActions.NOTE, MessageActions.DELETE]
+    POSSIBLE_ACTIONS = [MessageActions.SAVE, MessageActions.NOTE, MessageActions.DELETE_REQUEST]
 
     @classmethod
     async def perform_action(cls, action: str, message_id: str, bot: Bot) -> AppResult:
@@ -273,15 +279,14 @@ class _DownloadableContentStrategy(ContentStrategy):
 
     POSSIBLE_ACTIONS = [MessageActions.DELETE_REQUEST, MessageActions.DOWNLOAD_FILE]
 
-
     @classmethod
     async def add_new_message(
         cls, message_data: Dict[str, Any], content_type: ContentType
     ) -> AppResult:
         result = await super().add_new_message(message_data, content_type)
-        #if result and result.data["action_info"].common_group_key:
-        #   result.data["next_actions"] += MessageActions.DOWNLOAD_ALL
-
+        if result and result.data.get("need_reply"):
+            if result.data["action_info"].common_group_key:
+                result.data["next_actions"].insert(0, MessageActions.DOWNLOAD_ALL)
         return result
 
     @classmethod
@@ -290,17 +295,22 @@ class _DownloadableContentStrategy(ContentStrategy):
         if not message_data:
             return AppResult(False, "Message with id: {} not found".format(message_id))
 
+        result = await cls._download(message_data, bot)
+        if result:
+            await update_action_for_message(message_id, MessageActions.NONE)
+        return result
+
+    @classmethod
+    async def _download(cls, message_data: Dict[str, Any], bot: Bot) -> AppResult:
         from_user = cls._get_from_user_id(message_data)
         from_chat = cls._get_from_chat_id(message_data)
 
-        result = await cls._download(
+        result = await cls._download_file_impl(
             message_data[cls.content_type_key],
             bot,
             from_user=from_user,
             from_chat=from_chat,
         )
-        if result:
-            await update_action_for_message(message_id, MessageActions.NONE)
         return result
 
     @staticmethod
@@ -320,7 +330,7 @@ class _DownloadableContentStrategy(ContentStrategy):
         return str(from_user["id"])
 
     @classmethod
-    async def _download(
+    async def _download_file_impl(
         cls,
         downloadable_data: list[dict[Any]],
         bot: Bot,
@@ -369,6 +379,33 @@ class _DownloadableContentStrategy(ContentStrategy):
     def _get_extension(cls, file_data: Dict[str, Any]) -> str:
         return cls.file_extension
 
+    @classmethod
+    async def download_all(cls, message_id: str, bot: Bot):
+        message_data, _ = _find_message(message_id)
+        if not message_data:
+            return AppResult(False, "Message with id: {} not found".format(message_id))
+
+        cb_message_info = from_dict(
+            data_class=CB_MessageInfo, data=message_data["cb_message_info"]
+        )
+        common_group_key = cb_message_info.common_group_key
+        common_group_id = message_data[common_group_key]
+
+        filter_search = {common_group_key: common_group_id}
+        messages = db.NewMessagesCollection.get_documents_by_filter(filter_search)
+
+        result = AppResult()
+        for _message_data in messages:
+            _cb_message_info = from_dict(
+                data_class=CB_MessageInfo, data=_message_data["cb_message_info"]
+            )
+            _cls = cls_strategy_by_content_type[_cb_message_info.content_type]
+            _result = await _cls._download(_message_data, bot)
+            result.merge(_result)
+
+        if result:
+            await update_action_for_message(message_id, MessageActions.NONE)
+        return result
 
 class PhotoContentStrategy(_DownloadableContentStrategy):
     content_type_key: str = ContentType.PHOTO
@@ -420,7 +457,7 @@ class StickerContentStrategy(_DownloadableContentStrategy):
             return result
 
         for sticker in sticker_set.stickers:
-            result_ = await cls._download(
+            result_ = await cls._download_file_impl(
                 json.loads(sticker.json()), bot, dir_path=result.data
             )
             result.merge(result_)

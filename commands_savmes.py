@@ -6,7 +6,7 @@ from aiogram.types import CallbackQuery, ContentType
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from savmes import (
-    ContentStrategy,
+    add_new_message,
     MessageActions,
     perform_message_action,
     set_action_message_id,
@@ -56,7 +56,7 @@ async def common_msg(message: types.Message, bot: Bot):
     logger.info(
         "Received message: {}; data: {}".format(message.content_type, message_data)
     )
-    result = await ContentStrategy.add_new_message(message_data, message.content_type)
+    result = await add_new_message(message_data, message.content_type)
     if result and result.data.get("need_reply"):
         logger.info("Result adding: {}".format(result))
         saved_message_id = result.data["_id"]
