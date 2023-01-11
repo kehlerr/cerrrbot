@@ -80,15 +80,14 @@ class PassApp:
         if not lsdir:
             return {}
 
-        passes_data = {"passfiles": [], "passsubdirs": []}
-
+        passes_data = {}
         pass_list = subprocess.check_output(rf"ls {lsdir}", shell=True).decode("utf-8")
         for pass_ in pass_list.split("\n"):
             if pass_.endswith(".gpg"):
                 pass_ = os.path.splitext(pass_)[0]
-                passes_data["passfiles"].append(pass_)
+                passes_data.setdefault("passfiles", []).append(pass_)
             elif pass_:
-                passes_data["passsubdirs"].append(pass_)
+                passes_data.setdefault("passsubdirs", []).append(pass_)
 
         self._passes_data[path] = passes_data
 

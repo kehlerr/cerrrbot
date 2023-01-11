@@ -274,8 +274,17 @@ async def pass_list_cmd(
 ):
     passes_data = PASS_APP.list_passes(command.args)
 
-    content = [f"<code>{pass_}/</code>" for pass_ in passes_data["passsubdirs"]]
-    content.extend([f"<code>{pass_}</code>" for pass_ in passes_data["passfiles"]])
+    content = []
+    try:
+        content.extend([f"<code>{pass_}/</code>" for pass_ in passes_data["passsubdirs"]])
+    except KeyError:
+        pass
+
+    try:
+        content.extend([f"<code>{pass_}</code>" for pass_ in passes_data["passfiles"]])
+    except KeyError:
+        pass
+
     content = ContentData(content)
 
     await state.update_data({"content_data": content})
