@@ -18,40 +18,6 @@ logger = logging.getLogger("cerrrbot")
 
 savmes_router = Router()
 
-actions_by_content_type = {
-    ContentType.TEXT: (
-        MessageActions.SAVE,
-        MessageActions.NOTE,
-        MessageActions.DELETE_REQUEST,
-    ),
-    ContentType.PHOTO: (
-        MessageActions.DOWNLOAD_FILE,
-        MessageActions.DOWNLOAD_ALL,
-        MessageActions.DELETE_REQUEST,
-    ),
-    ContentType.VIDEO: (
-        MessageActions.DOWNLOAD_FILE,
-        MessageActions.DOWNLOAD_ALL,
-        MessageActions.DOWNLOAD_DELAY,
-        MessageActions.DELETE_REQUEST,
-    ),
-    ContentType.ANIMATION: (
-        MessageActions.DOWNLOAD_FILE,
-        MessageActions.DELETE_REQUEST,
-    ),
-    ContentType.STICKER: (
-        MessageActions.DOWNLOAD_FILE,
-        MessageActions.DOWNLOAD_ALL,
-        MessageActions.DELETE_REQUEST,
-    ),
-    ContentType.AUDIO: (MessageActions.DOWNLOAD_FILE, MessageActions.DELETE_REQUEST),
-    ContentType.VOICE: (MessageActions.DOWNLOAD_FILE, MessageActions.DELETE_REQUEST),
-    ContentType.VIDEO_NOTE: (
-        MessageActions.DOWNLOAD_FILE,
-        MessageActions.DELETE_REQUEST,
-    ),
-}
-
 
 caption_by_action = {
     MessageActions.DELETE_REQUEST: "Delete",
@@ -84,7 +50,6 @@ EXCLUDE_MESSAGE_FIELDS = {
 
 @savmes_router.message()
 async def common_msg(message: types.Message, bot: Bot):
-    print(message)
     message_data = message.dict(
         exclude_none=True, exclude_defaults=True, exclude=EXCLUDE_MESSAGE_FIELDS
     )
@@ -95,11 +60,10 @@ async def common_msg(message: types.Message, bot: Bot):
     if result and result.data.get("need_reply"):
         logger.info("Result adding: {}".format(result))
         saved_message_id = result.data["_id"]
+        message_actions = result.data["next_actions"]
         action_message = await message.reply(
             "Choose action for this message:",
-            reply_markup=actions_menu_by_content_type_kb(
-                saved_message_id, message.content_type
-            ),
+            reply_markup=_build_message_actions_menu_kb(message_actions, saved_message_id, message.content_type)
         )
         await set_action_message_id(saved_message_id, action_message.message_id)
 
@@ -130,15 +94,6 @@ async def on_action_pressed(
         text_result = "Regret to infrom, that some error/exception occured.\n Please, check logs for more information"
 
     await query.answer(text_result)
-
-
-def actions_menu_by_content_type_kb(
-    message_id: str, content_type: ContentType
-) -> types.InlineKeyboardMarkup:
-    message_actions = actions_by_content_type.get(
-        content_type, actions_by_content_type[ContentType.TEXT]
-    )
-    return _build_message_actions_menu_kb(message_actions, message_id, content_type)
 
 
 def _build_message_actions_menu_kb(

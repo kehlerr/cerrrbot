@@ -101,6 +101,8 @@ class ContentStrategy:
         "media_group_id",
     }
 
+    POSSIBLE_ACTIONS = [MessageActions.SAVE, MessageActions.NOTE, MessageActions.DELETE]
+
     @classmethod
     async def perform_action(cls, action: str, message_id: str, bot: Bot) -> AppResult:
         action_method = cls._get_action_by_code(action)
@@ -111,29 +113,20 @@ class ContentStrategy:
         return result
 
     @classmethod
-    def _get_action_by_code(cls, code: MessageActions) -> Optional[Callable]:
-        if code == MessageActions.SAVE:
-            return cls.save
-        elif code == MessageActions.DELETE_REQUEST:
-            return cls.delete_request
-        elif code == MessageActions.DELETE_NOW:
-            return cls.delete
-        elif code == MessageActions.NOTE:
-            return cls.delete
-        elif code == MessageActions.DELETE_1:
-            return partial(cls._delete_after_time, DELETE_TIMEOUT_1)
-        elif code == MessageActions.DELETE_2:
-            return partial(cls._delete_after_time, DELETE_TIMEOUT_2)
-        elif code == MessageActions.DELETE_3:
-            return partial(cls._delete_after_time, DELETE_TIMEOUT_3)
-        elif code == MessageActions.DELETE_FROM_CHAT:
-            return cls._delete_from_chat
-        elif code == MessageActions.DOWNLOAD_FILE:
-            return cls.download
-        elif code == MessageActions.DOWNLOAD_ALL:
-            return cls.download_all
-
-        return None
+    def _get_action_by_code(cls, code: str) -> Optional[Callable]:
+        actions_by_code = {
+            MessageActions.SAVE: cls.save,
+            MessageActions.NOTE: cls.delete,
+            MessageActions.DELETE_REQUEST: cls.delete_request,
+            MessageActions.DELETE_NOW: cls.delete,
+            MessageActions.DELETE_1: partial(cls._delete_after_time, DELETE_TIMEOUT_1),
+            MessageActions.DELETE_2: partial(cls._delete_after_time, DELETE_TIMEOUT_2),
+            MessageActions.DELETE_3: partial(cls._delete_after_time, DELETE_TIMEOUT_3),
+            MessageActions.DELETE_FROM_CHAT: cls._delete_from_chat,
+            MessageActions.DOWNLOAD_FILE: cls.download,
+            MessageActions.DOWNLOAD_ALL: cls.download_all,
+        }
+        return actions_by_code.get(code)
 
     @classmethod
     async def _delete_after_time(cls, timeout, message_id, *args) -> AppResult:
@@ -196,6 +189,7 @@ class ContentStrategy:
             if not message_data:
                 return AppResult(False, "[{}] Message not found".format(message_id))
 
+        result = AppResult()
         chat_id = message_data["chat"]["id"]
         try:
             result = await bot.delete_message(
@@ -251,6 +245,8 @@ class ContentStrategy:
                 )
             ):
                 add_result.data["need_reply"] = True
+                add_result.data["next_actions"] = cls.POSSIBLE_ACTIONS
+            add_result.data["action_info"] = message_info
             logger.info(
                 "Saved new message with _id:[{}]".format(str(add_result.data["_id"]))
             )
@@ -265,11 +261,28 @@ class ContentStrategy:
     async def download(cls, *args):
         raise NotImplementedError
 
+    @classmethod
+    async def download_all(cls, *args):
+        raise NotImplementedError
+
 
 class _DownloadableContentStrategy(ContentStrategy):
     content_type_key: str
     file_extension: str
     sort_key: str = "height"
+
+    POSSIBLE_ACTIONS = [MessageActions.DELETE_REQUEST, MessageActions.DOWNLOAD_FILE]
+
+
+    @classmethod
+    async def add_new_message(
+        cls, message_data: Dict[str, Any], content_type: ContentType
+    ) -> AppResult:
+        result = await super().add_new_message(message_data, content_type)
+        #if result and result.data["action_info"].common_group_key:
+        #   result.data["next_actions"] += MessageActions.DOWNLOAD_ALL
+
+        return result
 
     @classmethod
     async def download(cls, message_id: str, bot: Bot) -> AppResult:
@@ -360,11 +373,13 @@ class _DownloadableContentStrategy(ContentStrategy):
 class PhotoContentStrategy(_DownloadableContentStrategy):
     content_type_key: str = ContentType.PHOTO
     file_extension: str = "jpg"
+    POSSIBLE_ACTIONS = [MessageActions.DOWNLOAD_FILE, MessageActions.DELETE_REQUEST]
 
 
 class VideoContentStrategy(_DownloadableContentStrategy):
     content_type_key: str = ContentType.VIDEO
     file_extension: str = "mp4"
+    POSSIBLE_ACTIONS = [MessageActions.DOWNLOAD_FILE, MessageActions.DELETE_REQUEST]
 
 
 class AnimationContentStrategy(_DownloadableContentStrategy):
@@ -390,6 +405,7 @@ class VoiceContentStrategy(_DownloadableContentStrategy):
 class StickerContentStrategy(_DownloadableContentStrategy):
     file_extension: str = "webp"
     content_type_key: str = ContentType.STICKER
+    POSSIBLE_ACTIONS = [MessageActions.DOWNLOAD_FILE, MessageActions.DOWNLOAD_ALL, MessageActions.DELETE_REQUEST]
 
     @classmethod
     async def download_all(cls, message_id: str, bot: Bot) -> AppResult:
