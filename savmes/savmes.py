@@ -1,9 +1,9 @@
 import json
 import logging
 import os
-from dataclasses import asdict, dataclass
+import sys
+from dataclasses import asdict
 from datetime import datetime
-from enum import Enum
 from functools import partial
 from typing import Any, Callable, Dict, List, Optional, Union
 
@@ -11,42 +11,19 @@ from aiogram import Bot
 from aiogram.types import ContentType
 from dacite import from_dict
 
+current = os.path.dirname(os.path.realpath(__file__))
+parent = os.path.dirname(current)
+sys.path.append(parent)
+
 import db_utils as db
 from common import AppResult, create_directory
-from settings import (
-    DATA_DIRECTORY_ROOT,
-    DELETE_TIMEOUT_1,
-    DELETE_TIMEOUT_2,
-    DELETE_TIMEOUT_3,
-    TIMEOUT_BEFORE_PERFORMING_DEFAULT_ACTION,
-)
+from settings import (DELETE_TIMEOUT_1, DELETE_TIMEOUT_2, DELETE_TIMEOUT_3,
+                      TIMEOUT_BEFORE_PERFORMING_DEFAULT_ACTION)
+
+from .common import CB_MessageInfo, save_file
+from .constants import MessageActions
 
 logger = logging.getLogger("cerrrbot")
-
-
-class MessageActions(str, Enum):
-    NONE = "NONE"
-    DELETE_REQUEST = "DEL"
-    SAVE = "SAVE"
-    DOWNLOAD_FILE = "DL"
-    DOWNLOAD_ALL = "DLAL"
-    DOWNLOAD_DELAY = "DLDE"
-    NOTE = "NOTE"
-    TODO = "NOTO"
-    BOOKMARK = "AB"
-    DELETE_FROM_CHAT = "DFC"
-    DELETE_NOW = "DELN"
-    DELETE_1 = "DEL1"
-    DELETE_2 = "DEL2"
-    DELETE_3 = "DEL3"
-
-
-@dataclass
-class CB_MessageInfo:
-    action: str = MessageActions.DELETE_NOW
-    perform_action_at: int = 0
-    common_group_key: Optional[str] = None
-    content_type: str = ContentType.TEXT
 
 
 async def set_action_message_id(document_message_id: str, action_message_id):
@@ -107,7 +84,11 @@ class ContentStrategy:
         "media_group_id",
     }
 
-    POSSIBLE_ACTIONS = [MessageActions.SAVE, MessageActions.NOTE, MessageActions.DELETE_REQUEST]
+    POSSIBLE_ACTIONS = [
+        MessageActions.SAVE,
+        MessageActions.NOTE,
+        MessageActions.DELETE_REQUEST,
+    ]
 
     @classmethod
     async def perform_action(cls, action: str, message_id: str, bot: Bot) -> AppResult:
@@ -346,7 +327,7 @@ class _DownloadableContentStrategy(ContentStrategy):
             )
 
         file_name = cls._get_file_name(file_data, from_user, from_chat)
-        result = await _save_file(bot, file_data["file_id"], file_name, dir_path)
+        result = await save_file(bot, file_data["file_id"], file_name, dir_path)
         return result
 
     @classmethod
@@ -407,6 +388,7 @@ class _DownloadableContentStrategy(ContentStrategy):
             await update_action_for_message(message_id, MessageActions.NONE)
         return result
 
+
 class PhotoContentStrategy(_DownloadableContentStrategy):
     content_type_key: str = ContentType.PHOTO
     file_extension: str = "jpg"
@@ -442,7 +424,11 @@ class VoiceContentStrategy(_DownloadableContentStrategy):
 class StickerContentStrategy(_DownloadableContentStrategy):
     file_extension: str = "webp"
     content_type_key: str = ContentType.STICKER
-    POSSIBLE_ACTIONS = [MessageActions.DOWNLOAD_FILE, MessageActions.DOWNLOAD_ALL, MessageActions.DELETE_REQUEST]
+    POSSIBLE_ACTIONS = [
+        MessageActions.DOWNLOAD_FILE,
+        MessageActions.DOWNLOAD_ALL,
+        MessageActions.DELETE_REQUEST,
+    ]
 
     @classmethod
     async def download_all(cls, message_id: str, bot: Bot) -> AppResult:
@@ -494,22 +480,6 @@ cls_strategy_by_content_type = {
     ContentType.VOICE: VoiceContentStrategy,
     ContentType.DOCUMENT: ContentStrategy,
 }
-
-
-async def _save_file(
-    bot: Bot, file_id: str, file_name: str, dir_path: str
-) -> AppResult:
-    if not dir_path:
-        dir_path = DATA_DIRECTORY_ROOT
-
-    file_path = os.path.join(dir_path, file_name)
-    try:
-        await bot.download(file_id, file_path)
-    except Exception as exc:
-        logger.error(exc)
-        return AppResult(False, exc)
-
-    return AppResult()
 
 
 async def update_action_for_message(

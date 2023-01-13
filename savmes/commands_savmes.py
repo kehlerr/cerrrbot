@@ -2,16 +2,11 @@ import logging
 
 from aiogram import Bot, F, Router, types
 from aiogram.filters.callback_data import CallbackData
-from aiogram.types import CallbackQuery, ContentType
+from aiogram.types import CallbackQuery
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from savmes import (
-    add_new_message,
-    MessageActions,
-    perform_message_action,
-    set_action_message_id,
-    update_action_for_message,
-)
+from .savmes import (MessageActions, add_new_message, perform_message_action,
+                     set_action_message_id, update_action_for_message)
 
 logger = logging.getLogger("cerrrbot")
 
@@ -63,7 +58,9 @@ async def common_msg(message: types.Message, bot: Bot):
         message_actions = result.data["next_actions"]
         action_message = await message.reply(
             "Choose action for this message:",
-            reply_markup=_build_message_actions_menu_kb(message_actions, saved_message_id, message.content_type)
+            reply_markup=_build_message_actions_menu_kb(
+                message_actions, saved_message_id, message.content_type
+            ),
         )
         await set_action_message_id(saved_message_id, action_message.message_id)
 

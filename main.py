@@ -12,10 +12,10 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 import db_utils
 import savmes
 from commands_pass import pass_form_router
-from commands_savmes import savmes_router
 from common import CheckUserMiddleware, navigate_content
 from constants import CHECK_FOR_NEW_TASKS_TIMEOUT, Action, UserAction
 from keyboards import Keyboards as kbs
+from savmes.commands_savmes import savmes_router
 from settings import TOKEN
 
 logger = logging.getLogger("cerrrbot")

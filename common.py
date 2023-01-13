@@ -8,12 +8,8 @@ from aiogram import BaseMiddleware
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 
-from constants import (
-    DEFAULT_PAGE_LIMIT,
-    DEFAULT_TIMEOUT_TO_DELETE_MESSAGES,
-    Action,
-    UserAction,
-)
+from constants import (DEFAULT_PAGE_LIMIT, DEFAULT_TIMEOUT_TO_DELETE_MESSAGES,
+                       Action, UserAction)
 from keyboards import Keyboards as kbs
 from settings import ALLOWED_USERS, DATA_DIRECTORY_ROOT
 

@@ -9,3 +9,6 @@ deploy:
 
 logs:
 	docker-compose logs bot
+
+pretty:
+	isort . && black && flake8 &&
