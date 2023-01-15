@@ -1,12 +1,14 @@
 import logging
+from typing import List
 
 from aiogram import Bot, F, Router, types
 from aiogram.filters.callback_data import CallbackData
 from aiogram.types import CallbackQuery
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from .savmes import (MessageActions, add_new_message, perform_message_action,
-                     set_action_message_id, update_action_for_message)
+from .savmes import (MessageAction, MessageActions, add_new_message,
+                     perform_message_action, set_action_message_id,
+                     update_action_for_message)
 
 logger = logging.getLogger("cerrrbot")
 
@@ -14,25 +16,8 @@ logger = logging.getLogger("cerrrbot")
 savmes_router = Router()
 
 
-caption_by_action = {
-    MessageActions.DELETE_REQUEST: "Delete",
-    MessageActions.DELETE_NOW: "Del now",
-    MessageActions.DELETE_1: "Del in 15m",
-    MessageActions.DELETE_2: "Del in 12H",
-    MessageActions.DELETE_3: "Del in 48H",
-    MessageActions.DELETE_FROM_CHAT: "Del from chat",
-    MessageActions.SAVE: "Save",
-    MessageActions.DOWNLOAD_FILE: "Download",
-    MessageActions.DOWNLOAD_ALL: "Download all",
-    MessageActions.DOWNLOAD_DELAY: "Download delay",
-    MessageActions.NOTE: "Note",
-    MessageActions.TODO: "Note ToDo",
-    MessageActions.BOOKMARK: "Add bookmark",
-}
-
-
 class SaveMessageData(CallbackData, prefix="SVM"):
-    action: MessageActions
+    action: str
     message_id: str
     content_type: str
 
@@ -66,14 +51,14 @@ async def common_msg(message: types.Message, bot: Bot):
 
 
 @savmes_router.callback_query(
-    SaveMessageData.filter(F.action.name.in_(dir(MessageActions)))
+    SaveMessageData.filter(F.action.in_(MessageActions.CODES))
 )
 async def on_action_pressed(
     query: CallbackQuery, callback_data: SaveMessageData, bot: Bot, **kwargs
 ):
     logger.info("Received data on chosen action: {}".format(callback_data))
     message_id = callback_data.message_id
-    await update_action_for_message(message_id, callback_data.action)
+    await update_action_for_message(message_id, MessageActions.ACTION_BY_CODE[callback_data.action])
     result = await perform_message_action(message_id, bot)
     if result:
         text_result = ""
@@ -94,14 +79,14 @@ async def on_action_pressed(
 
 
 def _build_message_actions_menu_kb(
-    actions: list, message_id: str, content_type: str
+    actions: List[MessageAction], message_id: str, content_type: str
 ) -> types.InlineKeyboardMarkup:
     kb_builder = InlineKeyboardBuilder()
-    for action in actions:
+    for action in sorted(list(actions)):
         kb_builder.button(
-            text=caption_by_action[action],
+            text=action.caption,
             callback_data=SaveMessageData(
-                action=action, message_id=message_id, content_type=content_type
+                action=action.code, message_id=message_id, content_type=content_type
             ),
         )
     return kb_builder.as_markup()

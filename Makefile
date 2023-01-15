@@ -11,4 +11,4 @@ logs:
 	docker-compose logs bot
 
 pretty:
-	isort . && black && flake8 &&
+	isort . && black . && flake8 .

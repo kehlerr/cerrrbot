@@ -4,8 +4,7 @@ import os
 import sys
 from dataclasses import asdict
 from datetime import datetime
-from functools import partial
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 from aiogram import Bot
 from aiogram.types import ContentType
@@ -17,11 +16,11 @@ sys.path.append(parent)
 
 import db_utils as db
 from common import AppResult, create_directory
-from settings import (DELETE_TIMEOUT_1, DELETE_TIMEOUT_2, DELETE_TIMEOUT_3,
-                      TIMEOUT_BEFORE_PERFORMING_DEFAULT_ACTION)
+from settings import TIMEOUT_BEFORE_PERFORMING_DEFAULT_ACTION
+from trilium_helper import add_bookmark_url, add_note
 
 from .common import CB_MessageInfo, save_file
-from .constants import MessageActions
+from .constants import MessageAction, MessageActions
 
 logger = logging.getLogger("cerrrbot")
 
@@ -84,39 +83,30 @@ class ContentStrategy:
         "media_group_id",
     }
 
-    POSSIBLE_ACTIONS = [
+    POSSIBLE_ACTIONS = {
         MessageActions.SAVE,
         MessageActions.NOTE,
         MessageActions.DELETE_REQUEST,
-    ]
+    }
 
     @classmethod
-    async def perform_action(cls, action: str, message_id: str, bot: Bot) -> AppResult:
-        action_method = cls._get_action_by_code(action)
-        if not action_method:
-            logger.error("Action method not found:{}".format(action))
+    async def perform_action(cls, action_code: str, message_id: str, bot: Bot) -> AppResult:
+        action = MessageActions.ACTION_BY_CODE.get(action_code)
+        if not action:
+            logger.error("Action not found:{}".format(action_code))
             return AppResult(False)
-        result = await action_method(message_id, bot)
+
+        try:
+            action_method = getattr(cls, action.method)
+        except AttributeError:
+            logger.error("Action method not found:{}".format(action.method))
+            return AppResult(False)
+
+        result = await action_method(message_id, bot, *action.method_args)
         return result
 
     @classmethod
-    def _get_action_by_code(cls, code: str) -> Optional[Callable]:
-        actions_by_code = {
-            MessageActions.SAVE: cls.save,
-            MessageActions.NOTE: cls.delete,
-            MessageActions.DELETE_REQUEST: cls.delete_request,
-            MessageActions.DELETE_NOW: cls.delete,
-            MessageActions.DELETE_1: partial(cls._delete_after_time, DELETE_TIMEOUT_1),
-            MessageActions.DELETE_2: partial(cls._delete_after_time, DELETE_TIMEOUT_2),
-            MessageActions.DELETE_3: partial(cls._delete_after_time, DELETE_TIMEOUT_3),
-            MessageActions.DELETE_FROM_CHAT: cls._delete_from_chat,
-            MessageActions.DOWNLOAD_FILE: cls.download,
-            MessageActions.DOWNLOAD_ALL: cls.download_all,
-        }
-        return actions_by_code.get(code)
-
-    @classmethod
-    async def _delete_after_time(cls, timeout, message_id, *args) -> AppResult:
+    async def _delete_after_time(cls, message_id: str, bot: Bot, timeout: int) -> AppResult:
         return await update_action_for_message(
             message_id, MessageActions.DELETE_NOW, timeout
         )
@@ -162,13 +152,13 @@ class ContentStrategy:
 
         result = db.NewMessagesCollection.del_document(message_id)
         if result:
-            result = await cls._delete_from_chat(message_id, bot, message_data)
+            result = await cls.delete_from_chat(message_id, bot, message_data)
 
         logger.info(result)
         return result
 
     @classmethod
-    async def _delete_from_chat(
+    async def delete_from_chat(
         cls, message_id: str, bot: Bot, message_data: Optional[dict] = None
     ) -> AppResult:
         if not message_data:
@@ -215,25 +205,22 @@ class ContentStrategy:
                 break
 
         message_info = CB_MessageInfo(
-            action=cls.DEFAULT_ACTION,
+            action=cls.DEFAULT_ACTION.code,
             perform_action_at=perform_action_at,
             common_group_key=common_group_key,
             content_type=content_type,
         )
-        message_data["cb_message_info"] = asdict(message_info)
 
+        parsed_data = cls._parse_message_data(message_data)
+        url_text = parsed_data.get("url")
+        if url_text:
+            message_info.url_text = url_text
+
+        message_data["cb_message_info"] = {k: v for k, v in asdict(message_info).items() if v is not None}
         logger.info("Adding message: {}".format(message_data))
         add_result = db.NewMessagesCollection.add_document(message_data)
         if add_result:
-            if (
-                not common_group_key
-                or not db.NewMessagesCollection.exists_document_in_group(
-                    common_group_key, message_data[common_group_key]
-                )
-            ):
-                add_result.data["need_reply"] = True
-                add_result.data["next_actions"] = cls.POSSIBLE_ACTIONS
-            add_result.data["action_info"] = message_info
+            add_result.data.update(cls._prepare_result_data(message_data, message_info))
             logger.info(
                 "Saved new message with _id:[{}]".format(str(add_result.data["_id"]))
             )
@@ -243,6 +230,82 @@ class ContentStrategy:
             )
 
         return add_result
+
+    @classmethod
+    def _parse_message_data(cls, message_data: Dict[str, Any]):
+        parsed_data = {}
+        entities = message_data.get("entities")
+        if entities:
+            cls._parse_entities_data(message_data["text"], entities, parsed_data)
+
+        return parsed_data
+
+    @staticmethod
+    def _parse_entities_data(message_text: str, entities: Dict[str, Any], parsed_data: Dict[str, Any]) -> Dict[str, Any]:
+        link_url = None
+        links_url = [v for v in entities if v["type"] == "url"]
+
+        if len(links_url) == 1:
+            link_url_data = links_url[0]
+            offset = link_url_data["offset"]
+            length = link_url_data["length"]
+            link_url = message_text[offset:offset+length]
+
+        parsed_data["url"] = link_url
+
+    @classmethod
+    def _prepare_result_data(cls, message_data: Dict[str, Any], message_info: CB_MessageInfo) -> Dict[str, Any]:
+        result_data = {}
+        common_group_key = message_info.common_group_key
+        if (
+            not common_group_key
+            or not db.NewMessagesCollection.exists_document_in_group(
+                common_group_key, message_data[common_group_key]
+            )
+        ):
+            result_data["need_reply"] = True
+            next_actions = cls.POSSIBLE_ACTIONS
+            if message_info.url_text:
+                next_actions.add(MessageActions.BOOKMARK)
+            result_data["next_actions"] = next_actions
+
+        result_data["action_info"] = message_info
+
+        return result_data
+
+    @classmethod
+    async def note_bookmark_url(cls, message_id: str, bot: Bot) -> AppResult:
+        message_data, _ = _find_message(message_id)
+        if not message_data:
+            return AppResult(False, "Message with id: {} not found".format(message_id))
+
+        cb_message_info = from_dict(
+            data_class=CB_MessageInfo, data=message_data["cb_message_info"]
+        )
+
+        url_text = cb_message_info.url_text
+        result = AppResult(add_bookmark_url(url_text))
+        if result:
+            await update_action_for_message(message_id, MessageActions.NONE)
+            result.data["next_actions"] = (
+                MessageActions.DELETE_FROM_CHAT,
+            )
+        return result
+
+    @classmethod
+    async def add_note(cls, message_id: str, bot: Bot) -> AppResult:
+        message_data, _ = _find_message(message_id)
+        if not message_data:
+            return AppResult(False, "Message with id: {} not found".format(message_id))
+
+        result = AppResult(add_note(message_data["text"]))
+        if result:
+            await update_action_for_message(message_id, MessageActions.NONE)
+            result.data["next_actions"] = (
+                MessageActions.DELETE_FROM_CHAT,
+            )
+
+        return result
 
     @classmethod
     async def download(cls, *args):
@@ -258,7 +321,7 @@ class _DownloadableContentStrategy(ContentStrategy):
     file_extension: str
     sort_key: str = "height"
 
-    POSSIBLE_ACTIONS = [MessageActions.DELETE_REQUEST, MessageActions.DOWNLOAD_FILE]
+    POSSIBLE_ACTIONS = {MessageActions.DELETE_REQUEST, MessageActions.DOWNLOAD_FILE}
 
     @classmethod
     async def add_new_message(
@@ -267,7 +330,7 @@ class _DownloadableContentStrategy(ContentStrategy):
         result = await super().add_new_message(message_data, content_type)
         if result and result.data.get("need_reply"):
             if result.data["action_info"].common_group_key:
-                result.data["next_actions"].insert(0, MessageActions.DOWNLOAD_ALL)
+                result.data["next_actions"].add(MessageActions.DOWNLOAD_ALL)
         return result
 
     @classmethod
@@ -392,13 +455,13 @@ class _DownloadableContentStrategy(ContentStrategy):
 class PhotoContentStrategy(_DownloadableContentStrategy):
     content_type_key: str = ContentType.PHOTO
     file_extension: str = "jpg"
-    POSSIBLE_ACTIONS = [MessageActions.DOWNLOAD_FILE, MessageActions.DELETE_REQUEST]
+    POSSIBLE_ACTIONS = {MessageActions.DOWNLOAD_FILE, MessageActions.DELETE_REQUEST}
 
 
 class VideoContentStrategy(_DownloadableContentStrategy):
     content_type_key: str = ContentType.VIDEO
     file_extension: str = "mp4"
-    POSSIBLE_ACTIONS = [MessageActions.DOWNLOAD_FILE, MessageActions.DELETE_REQUEST]
+    POSSIBLE_ACTIONS = {MessageActions.DOWNLOAD_FILE, MessageActions.DELETE_REQUEST}
 
 
 class AnimationContentStrategy(_DownloadableContentStrategy):
@@ -424,11 +487,11 @@ class VoiceContentStrategy(_DownloadableContentStrategy):
 class StickerContentStrategy(_DownloadableContentStrategy):
     file_extension: str = "webp"
     content_type_key: str = ContentType.STICKER
-    POSSIBLE_ACTIONS = [
+    POSSIBLE_ACTIONS = {
         MessageActions.DOWNLOAD_FILE,
         MessageActions.DOWNLOAD_ALL,
         MessageActions.DELETE_REQUEST,
-    ]
+    }
 
     @classmethod
     async def download_all(cls, message_id: str, bot: Bot) -> AppResult:
@@ -483,13 +546,13 @@ cls_strategy_by_content_type = {
 
 
 async def update_action_for_message(
-    message_id: str, new_action: str, new_ttl: Optional[int] = None
+    message_id: str, new_action: MessageAction, new_ttl: Optional[int] = None
 ):
     message_data, collection = _find_message(message_id)
     cb_message_info = from_dict(
         data_class=CB_MessageInfo, data=message_data["cb_message_info"]
     )
-    cb_message_info.action = new_action
+    cb_message_info.action = new_action.code
     if new_ttl is not None:
         perform_action_at = int(datetime.now().timestamp()) + new_ttl
         cb_message_info.perform_action_at = perform_action_at

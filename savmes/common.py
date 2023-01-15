@@ -20,6 +20,7 @@ class CB_MessageInfo:
     perform_action_at: int = 0
     common_group_key: Optional[str] = None
     content_type: str = ContentType.TEXT
+    url_text: Optional[str] = None
 
 
 async def save_file(bot: Bot, file_id: str, file_name: str, dir_path: str) -> AppResult:
