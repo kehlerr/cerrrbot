@@ -32,6 +32,9 @@ class AppResult:
     def __bool__(self) -> bool:
         return self.status
 
+    def __getattr__(self, __name: str) -> Any:
+        return self.data[__name]
+
     def __str__(self) -> str:
         _str = f"Result:{self.status}; {self.info}"
         if self._info:

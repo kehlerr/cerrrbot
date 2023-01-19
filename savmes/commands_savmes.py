@@ -22,21 +22,12 @@ class SaveMessageData(CallbackData, prefix="SVM"):
     content_type: str
 
 
-EXCLUDE_MESSAGE_FIELDS = {
-    "chat": {"first_name", "last_name"},
-    "from_user": {"first_name", "last_name", "language_code"},
-}
-
-
 @savmes_router.message()
 async def common_msg(message: types.Message, bot: Bot):
-    message_data = message.dict(
-        exclude_none=True, exclude_defaults=True, exclude=EXCLUDE_MESSAGE_FIELDS
-    )
     logger.info(
-        "Received message: {}; data: {}".format(message.content_type, message_data)
+        "Received message: {}; data: {}".format(message.content_type, message)
     )
-    result = await add_new_message(message_data, message.content_type)
+    result = await add_new_message(message)
     if result and result.data.get("need_reply"):
         logger.info("Result adding: {}".format(result))
         saved_message_id = result.data["_id"]
@@ -82,7 +73,7 @@ def _build_message_actions_menu_kb(
     actions: List[MessageAction], message_id: str, content_type: str
 ) -> types.InlineKeyboardMarkup:
     kb_builder = InlineKeyboardBuilder()
-    for action in sorted(list(actions)):
+    for action in sorted(actions):
         kb_builder.button(
             text=action.caption,
             callback_data=SaveMessageData(

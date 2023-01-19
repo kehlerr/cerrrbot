@@ -39,5 +39,5 @@ DELETE_TIMEOUT_2 = config("DELETE_TIMEOUT_2", default=30, cast=int)
 DELETE_TIMEOUT_3 = config("DELETE_TIMEOUT_3", default=45, cast=int)
 DELETE_TIMEOUT_4 = config("DELETE_TIMEOUT_4", default=60, cast=int)
 TIMEOUT_BEFORE_PERFORMING_DEFAULT_ACTION = config(
-    "TIMEOUT_BEFORE_PERFORMING_DEFAULT_ACTION", default=5 * 60, cast=int
+    "TIMEOUT_BEFORE_PERFORMING_DEFAULT_ACTION", default=5, cast=int
 )

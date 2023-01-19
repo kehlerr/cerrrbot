@@ -4,10 +4,10 @@ import os
 import sys
 from dataclasses import asdict
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union, Tuple
 
 from aiogram import Bot
-from aiogram.types import ContentType
+from aiogram.types import ContentType, Message
 from dacite import from_dict
 
 current = os.path.dirname(os.path.realpath(__file__))
@@ -17,10 +17,11 @@ sys.path.append(parent)
 import db_utils as db
 from common import AppResult, create_directory
 from settings import TIMEOUT_BEFORE_PERFORMING_DEFAULT_ACTION
-from trilium_helper import add_bookmark_url, add_note
+from trilium_helper import add_bookmark_urls, add_note
 
 from .common import CB_MessageInfo, save_file
-from .constants import MessageAction, MessageActions
+from .constants import MessageAction, MessageActions, EXCLUDE_MESSAGE_FIELDS
+
 
 logger = logging.getLogger("cerrrbot")
 
@@ -47,9 +48,9 @@ async def check_actions_on_new_messages(bot: Bot):
     return result
 
 
-async def add_new_message(message_data: Dict[str, Any], content_type: str) -> AppResult:
-    cls_strategy = cls_strategy_by_content_type.get(content_type, ContentStrategy)
-    result = await cls_strategy.add_new_message(message_data, content_type)
+async def add_new_message(message: Message) -> AppResult:
+    cls_strategy = cls_strategy_by_content_type.get(message.content_type, ContentStrategy)
+    result = await cls_strategy.add_new_message(message)
     return result
 
 
@@ -193,10 +194,12 @@ class ContentStrategy:
         return result
 
     @classmethod
-    async def add_new_message(
-        cls, message_data: Dict[str, Any], content_type: ContentType
-    ) -> AppResult:
+    async def add_new_message(cls, message: Message) -> AppResult:
         perform_action_at = int(datetime.now().timestamp()) + cls.DEFAULT_MESSAGE_TTL
+
+        message_data = message.dict(
+            exclude_none=True, exclude_defaults=True, exclude=EXCLUDE_MESSAGE_FIELDS
+        )
 
         common_group_key = None
         for key in cls.COMMON_GROUP_KEYS:
@@ -204,17 +207,17 @@ class ContentStrategy:
                 common_group_key = key
                 break
 
+        entities = message.entities or message.caption_entities
+        if entities is not None:
+            entities = [json.loads(e.json(exclude_none=True)) for e in entities]
+
         message_info = CB_MessageInfo(
             action=cls.DEFAULT_ACTION.code,
             perform_action_at=perform_action_at,
             common_group_key=common_group_key,
-            content_type=content_type,
+            content_type=message.content_type,
+            entities=entities
         )
-
-        parsed_data = cls._parse_message_data(message_data)
-        url_text = parsed_data.get("url")
-        if url_text:
-            message_info.url_text = url_text
 
         message_data["cb_message_info"] = {k: v for k, v in asdict(message_info).items() if v is not None}
         logger.info("Adding message: {}".format(message_data))
@@ -232,28 +235,6 @@ class ContentStrategy:
         return add_result
 
     @classmethod
-    def _parse_message_data(cls, message_data: Dict[str, Any]):
-        parsed_data = {}
-        entities = message_data.get("entities")
-        if entities:
-            cls._parse_entities_data(message_data["text"], entities, parsed_data)
-
-        return parsed_data
-
-    @staticmethod
-    def _parse_entities_data(message_text: str, entities: Dict[str, Any], parsed_data: Dict[str, Any]) -> Dict[str, Any]:
-        link_url = None
-        links_url = [v for v in entities if v["type"] == "url"]
-
-        if len(links_url) == 1:
-            link_url_data = links_url[0]
-            offset = link_url_data["offset"]
-            length = link_url_data["length"]
-            link_url = message_text[offset:offset+length]
-
-        parsed_data["url"] = link_url
-
-    @classmethod
     def _prepare_result_data(cls, message_data: Dict[str, Any], message_info: CB_MessageInfo) -> Dict[str, Any]:
         result_data = {}
         common_group_key = message_info.common_group_key
@@ -264,8 +245,9 @@ class ContentStrategy:
             )
         ):
             result_data["need_reply"] = True
-            next_actions = cls.POSSIBLE_ACTIONS
-            if message_info.url_text:
+            next_actions = set(cls.POSSIBLE_ACTIONS)
+            has_url = any(v["type"] in {"url", "text_link"} for v in (message_info.entities or ()))
+            if has_url:
                 next_actions.add(MessageActions.BOOKMARK)
             result_data["next_actions"] = next_actions
 
@@ -283,8 +265,11 @@ class ContentStrategy:
             data_class=CB_MessageInfo, data=message_data["cb_message_info"]
         )
 
-        url_text = cb_message_info.url_text
-        result = AppResult(add_bookmark_url(url_text))
+        message_text = message_data.get("text") or message_data.get("caption")
+        text_links = [
+            e["url"] for e in cb_message_info.entities if e["type"] == "text_link"
+        ]
+        result = AppResult(add_bookmark_urls(message_text, text_links))
         if result:
             await update_action_for_message(message_id, MessageActions.NONE)
             result.data["next_actions"] = (
@@ -298,7 +283,12 @@ class ContentStrategy:
         if not message_data:
             return AppResult(False, "Message with id: {} not found".format(message_id))
 
-        result = AppResult(add_note(message_data["text"]))
+        message_text = message_data.get("text") or message_data.get("caption")
+        forward_from_id, title = cls._get_from_chat_data(message_data)
+        if not forward_from_id:
+            forward_from_id, title = cls._get_from_user_data(message_data)
+
+        result = AppResult(add_note(message_text, forward_from_id, title))
         if result:
             await update_action_for_message(message_id, MessageActions.NONE)
             result.data["next_actions"] = (
@@ -315,6 +305,22 @@ class ContentStrategy:
     async def download_all(cls, *args):
         raise NotImplementedError
 
+    @staticmethod
+    def _get_from_chat_data(message_data: Dict[str, Any]) -> Tuple[str, str]:
+        if "forward_from_chat" in message_data:
+            from_chat = message_data["forward_from_chat"]
+        elif "forward_from_user" in message_data:
+            from_chat = message_data["forward_from_user"]
+        else:
+            from_chat = message_data["chat"]
+
+        return str(from_chat["id"]), from_chat.get("title", "")
+
+    @staticmethod
+    def _get_from_user_data(message_data: Dict[str, Any]) -> Tuple[str, str]:
+        from_user = message_data["from_user"]
+        return str(from_user["id"]), from_user["username"]
+
 
 class _DownloadableContentStrategy(ContentStrategy):
     content_type_key: str
@@ -324,14 +330,21 @@ class _DownloadableContentStrategy(ContentStrategy):
     POSSIBLE_ACTIONS = {MessageActions.DELETE_REQUEST, MessageActions.DOWNLOAD_FILE}
 
     @classmethod
-    async def add_new_message(
-        cls, message_data: Dict[str, Any], content_type: ContentType
-    ) -> AppResult:
-        result = await super().add_new_message(message_data, content_type)
+    async def add_new_message(cls, message: Message) -> AppResult:
+        result = await super().add_new_message(message)
         if result and result.data.get("need_reply"):
             if result.data["action_info"].common_group_key:
                 result.data["next_actions"].add(MessageActions.DOWNLOAD_ALL)
         return result
+
+    @classmethod
+    def _prepare_result_data(cls, message_data: Dict[str, Any], message_info: CB_MessageInfo) -> Dict[str, Any]:
+        result_data = super()._prepare_result_data(message_data, message_info)
+
+        if result_data["need_reply"] and message_data.get("caption"):
+            result_data["next_actions"].add(MessageActions.NOTE)
+
+        return result_data
 
     @classmethod
     async def download(cls, message_id: str, bot: Bot) -> AppResult:
@@ -346,8 +359,8 @@ class _DownloadableContentStrategy(ContentStrategy):
 
     @classmethod
     async def _download(cls, message_data: Dict[str, Any], bot: Bot) -> AppResult:
-        from_user = cls._get_from_user_id(message_data)
-        from_chat = cls._get_from_chat_id(message_data)
+        from_user, _ = cls._get_from_user_data(message_data)
+        from_chat, _ = cls._get_from_chat_data(message_data)
 
         result = await cls._download_file_impl(
             message_data[cls.content_type_key],
@@ -356,22 +369,6 @@ class _DownloadableContentStrategy(ContentStrategy):
             from_chat=from_chat,
         )
         return result
-
-    @staticmethod
-    def _get_from_chat_id(message_data: Dict[str, Any]) -> str:
-        if "forward_from_chat" in message_data:
-            from_chat = message_data["forward_from_chat"]
-        elif "forward_from_user" in message_data:
-            from_chat = message_data["forward_from_user"]
-        else:
-            from_chat = message_data["chat"]
-
-        return str(from_chat["id"])
-
-    @staticmethod
-    def _get_from_user_id(message_data: Dict[str, Any]) -> str:
-        from_user = message_data["from_user"]
-        return str(from_user["id"])
 
     @classmethod
     async def _download_file_impl(
@@ -524,12 +521,12 @@ class StickerContentStrategy(_DownloadableContentStrategy):
         return super()._get_extension(file_data)
 
     @staticmethod
-    def _get_from_user_id(*args) -> str:
-        return ""
+    def _get_from_user_data(*args) -> Tuple[str, str]:
+        return "", ""
 
     @staticmethod
-    def _get_from_chat_id(*args) -> str:
-        return ""
+    def _get_from_chat_id(*args) -> Tuple[str, str]:
+        return "", ""
 
 
 cls_strategy_by_content_type = {

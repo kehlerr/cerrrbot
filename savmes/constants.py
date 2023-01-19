@@ -10,6 +10,12 @@ sys.path.append(parent)
 from settings import DELETE_TIMEOUT_1, DELETE_TIMEOUT_2, DELETE_TIMEOUT_3
 
 
+EXCLUDE_MESSAGE_FIELDS = {
+    "chat": {"first_name", "last_name"},
+    "from_user": {"first_name", "last_name", "language_code"},
+}
+
+
 @dataclass
 class MessageAction:
     code: str
