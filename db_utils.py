@@ -115,6 +115,11 @@ def _add_document(collection_name: str, entry_data: Dict[str, Any]) -> AppResult
     db = get_mongo_db()
     collection = db[collection_name]
 
+    document_id = entry_data.get("_id")
+
+    if document_id and isinstance(document_id, str):
+        entry_data["_id"] = ObjectId(document_id)
+
     try:
         inserted_id = collection.insert_one(entry_data).inserted_id
     except Exception as exc:

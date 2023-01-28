@@ -1,11 +1,14 @@
 import logging
 import os
+import sys
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set, Union
 
 from aiogram import Bot
-from aiogram.types import ContentType
 
+current = os.path.dirname(os.path.realpath(__file__))
+parent = os.path.dirname(current)
+sys.path.append(parent)
 from common import AppResult
 from settings import DATA_DIRECTORY_ROOT
 
@@ -18,9 +21,9 @@ logger = logging.getLogger("cerrrbot")
 class CB_MessageInfo:
     action: str = MessageActions.DELETE_NOW
     perform_action_at: int = 0
-    common_group_key: Optional[str] = None
-    content_type: str = ContentType.TEXT
+    reply_action_message_id: int = 0
     entities: Optional[List[Dict[str, Any]]] = None
+    actions: Optional[Union[List, Set]] = None
 
 
 async def save_file(bot: Bot, file_id: str, file_name: str, dir_path: str) -> AppResult:

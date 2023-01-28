@@ -39,6 +39,8 @@ class AppResult:
         _str = f"Result:{self.status}; {self.info}"
         if self._info:
             _str += "\n".join(self._info)
+        if self.data:
+            _str = f"\nData:{self.data}"
         return _str
 
     def merge(self, *other_results) -> None:
@@ -122,12 +124,16 @@ async def delete_messages_after_timeout(
 
 def create_directory(directory_name: str) -> AppResult:
     directory_path = get_directory_path(directory_name)
+
+    if os.path.exists(directory_path):
+        return AppResult(True, data=directory_path)
+
     try:
         os.mkdir(directory_path)
     except Exception as exc:
         result = AppResult(False, exc)
     else:
-        result = AppResult(True, data=directory_path)
+        result = AppResult(True, data={"path": directory_path})
 
     return result
 
