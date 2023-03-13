@@ -1,9 +1,9 @@
 import logging
 import os
 import sys
-from dataclasses import asdict, replace
+from dataclasses import asdict
 from datetime import datetime
-from typing import Any, Dict, Optional, Set, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 from aiogram.types import Message
 from dacite import from_dict
@@ -32,16 +32,12 @@ class MessageDocument(Message):
     def _load(self) -> None:
         try:
             cb_message_info = self.cb_message_info
-        except AttributeError:
+        except AttributeError as exc:
+            logger.error(f"Empty message info: {exc}")
             cb_message_info = {}
         self.cb_message_info = from_dict(
             data_class=CB_MessageInfo, data=cb_message_info
         )
-        if self.cb_message_info.actions:  # TODO: remove check
-            self.cb_message_info.actions = set(
-                MessageActions.ACTION_BY_CODE[a] for a in self.cb_message_info.actions
-            )
-        print("LOADED:", self.cb_message_info)
 
     def add(self, collection) -> AppResult:
         if self.collection == collection:
@@ -74,7 +70,7 @@ class MessageDocument(Message):
     def update_message_info(
         self,
         new_action: Optional[MessageAction] = MessageActions.NONE,
-        new_actions: Optional[Set[MessageAction]] = None,
+        new_actions: Optional[Dict[str, Any]] = None,
         new_ttl: Optional[int] = None,
         entities: Optional[Dict[str, Any]] = None,
         reply_action_message_id: Optional[int] = None,
@@ -90,7 +86,10 @@ class MessageDocument(Message):
                 self.cb_message_info.perform_action_at = -1
 
         if new_actions is not None:
-            self.cb_message_info.actions = new_actions
+            if not self.cb_message_info.actions:
+                self.cb_message_info.actions = new_actions
+            else:
+                self.cb_message_info.actions.update(new_actions)
 
         if entities is not None:
             self.cb_message_info.entities = entities
@@ -98,15 +97,13 @@ class MessageDocument(Message):
         if reply_action_message_id is not None:
             self.cb_message_info.reply_action_message_id = reply_action_message_id
 
-        updated_data = self._get_dumped_message_info()
+        updated_message_info = self._get_dumped_message_info()
         return self.collection.update_document(
-            self._id, {"cb_message_info": updated_data}
+            self._id, {"cb_message_info": updated_message_info}
         )
 
     def _get_dumped_message_info(self):
-        _cb_message_info = replace(self.cb_message_info)
-        _cb_message_info.actions = [action.code for action in _cb_message_info.actions]
-        return asdict(_cb_message_info)
+        return asdict(self.cb_message_info)
 
     @property
     def message_text(self):

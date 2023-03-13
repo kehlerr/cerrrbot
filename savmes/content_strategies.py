@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 from aiogram import Bot
 from aiogram.types import ContentType, Message
+from celery import signature
 
 current = os.path.dirname(os.path.realpath(__file__))
 parent = os.path.dirname(current)
@@ -16,8 +17,9 @@ from settings import TIMEOUT_BEFORE_PERFORMING_DEFAULT_ACTION
 from trilium_helper import add_bookmark_urls, add_note
 
 from .common import CB_MessageInfo, save_file
-from .constants import MessageActions
+from .constants import MessageAction, MessageActions
 from .message_document import MessageDocument
+from .message_parser import MessageParser
 
 logger = logging.getLogger("cerrrbot")
 
@@ -53,7 +55,6 @@ class ContentStrategy:
             logger.error(
                 "Error occured while adding received message: {}".format(add_result)
             )
-
         return add_result
 
     @classmethod
@@ -70,14 +71,17 @@ class ContentStrategy:
                 cls.COMMON_GROUP_KEY, common_group_id
             )
         ):
-            next_actions = set(cls.POSSIBLE_ACTIONS)
-            has_url = any(
-                e["type"] in {"url", "text_link"} for e in message_info.entities
-            )
-            if has_url:
-                next_actions.add(MessageActions.BOOKMARK)
-            message_info.actions = next_actions
+            message_info.actions = {action.code: {} for action in cls.POSSIBLE_ACTIONS}
+            cls._parse_message(message_data, message_info)
         return message_info
+
+    @classmethod
+    def _parse_message(
+        cls, message_data: Dict[str, Any], message_info: CB_MessageInfo
+    ) -> None:
+        parser = MessageParser(message_data["text"], message_info)
+        parser.parse()
+        message_info.actions.update(parser.actions)
 
     @classmethod
     async def perform_action(
@@ -85,7 +89,7 @@ class ContentStrategy:
     ) -> AppResult:
         action = MessageActions.ACTION_BY_CODE.get(action_code)
         if not action:
-            logger.error("Action not found:{}".format(action_code))
+            logger.error("Action not found: {}".format(action_code))
             return AppResult(False)
 
         try:
@@ -94,29 +98,61 @@ class ContentStrategy:
             logger.error("Action method not found:{}".format(action.method))
             return AppResult(False)
 
-        result = await action_method(msgdoc, bot, *action.method_args)
+        result = await action_method(msgdoc, bot, **action.method_args)
         if "message_info" not in result.data:
-            print("MSGDOC_IS:")
             result.data["message_info"] = msgdoc.cb_message_info
 
         logger.info(f"Result of performed action:{result}")
+        return result
+
+    @classmethod
+    async def custom_task(
+        cls, msgdoc: MessageDocument, bot: Bot, *args, **kwargs
+    ) -> AppResult:
+        added_task_data = {}
+
+        action_code = kwargs["code"]
+        task_data = msgdoc.cb_message_info.actions[action_code]
+        task_id = task_data.get("task_id")
+        if not task_id:
+            task_id = cls._run_task(kwargs["task_name"], task_data)
+            if not task_id:
+                return AppResult(False)
+        else:
+            added_task_data["result_info"] = "Task is in progress"
+
+        action = MessageActions.ACTION_BY_CODE[action_code]
+        added_task_data.update(
+            {"additional_caption": "[in progress]", "task_id": str(task_id)}
+        )
+        result = cls._update_actions(msgdoc, to_add={action: added_task_data})
 
         return result
 
     @classmethod
-    async def save(self, msgdoc: MessageDocument, bot: Bot) -> AppResult:
+    def _run_task(cls, task_name: str, task_data: Dict[str, Any]) -> Optional[str]:
+        try:
+            task_signature = signature(f"tasks.savmes_tasks.{task_name}")
+            result = task_signature.delay(task_data["data"])
+        except Exception as exc:
+            logger.exception(exc)
+            return None
+
+        return str(result)
+
+    @classmethod
+    async def save(cls, msgdoc: MessageDocument, bot: Bot) -> AppResult:
         del_result = msgdoc.delete()
         if not del_result:
             return del_result
 
         result = msgdoc.add(db.SavedMessagesCollection)
         if result:
-            actions = msgdoc.cb_message_info.actions - {
-                MessageActions.SAVE,
-                MessageActions.DELETE_REQUEST,
-            } | {MessageActions.DELETE_FROM_CHAT}
-            msgdoc.update_message_info(new_actions=actions)
-
+            result = cls._update_actions(
+                msgdoc,
+                (MessageActions.SAVE, MessageActions.DELETE_REQUEST),
+                {MessageActions.DELETE_FROM_CHAT: None},
+            )
         return result
 
     @classmethod
@@ -128,9 +164,7 @@ class ContentStrategy:
         ]
         result = AppResult(add_bookmark_urls(msgdoc.message_text, text_links))
         if result:
-            new_actions = msgdoc.cb_message_info.actions - {MessageActions.BOOKMARK}
-            msgdoc.update_message_info(new_actions=new_actions)
-
+            result = cls._update_actions(msgdoc, (MessageActions.BOOKMARK,))
         return result
 
     @classmethod
@@ -141,8 +175,7 @@ class ContentStrategy:
 
         result = AppResult(add_note(msgdoc.message_text, forward_from_id, title))
         if result:
-            new_actions = msgdoc.cb_message_info.actions - {MessageActions.NOTE}
-            msgdoc.update_message_info(new_actions=new_actions)
+            result = cls._update_actions(msgdoc, (MessageActions.NOTE,))
 
         return result
 
@@ -150,10 +183,10 @@ class ContentStrategy:
     async def delete_request(cls, *args, **kwargs) -> AppResult:
         message_info = CB_MessageInfo(
             actions={
-                MessageActions.DELETE_1,
-                MessageActions.DELETE_2,
-                MessageActions.DELETE_3,
-                MessageActions.DELETE_NOW,
+                MessageActions.DELETE_1.code: {},
+                MessageActions.DELETE_2.code: {},
+                MessageActions.DELETE_3.code: {},
+                MessageActions.DELETE_NOW.code: {},
             }
         )
         return AppResult(True, data={"message_info": message_info})
@@ -209,6 +242,25 @@ class ContentStrategy:
     async def download_all(cls, *args):
         raise NotImplementedError
 
+    @classmethod
+    def _update_actions(
+        cls,
+        msgdoc: MessageDocument,
+        to_delete: Optional[List[MessageAction]] = None,
+        to_add: Optional[Dict[MessageAction, Any]] = None,
+    ) -> AppResult:
+        message_actions = msgdoc.cb_message_info.actions
+        if to_delete:
+            for action in to_delete:
+                message_actions.pop(action.code, None)
+
+        if to_add:
+            for action, data in to_add.items():
+                message_actions[action.code] = data or {}
+
+        result = msgdoc.update_message_info(new_actions=message_actions)
+        return result
+
 
 class _DownloadableContentStrategy(ContentStrategy):
     content_type_key: str
@@ -220,15 +272,13 @@ class _DownloadableContentStrategy(ContentStrategy):
     @classmethod
     def _prepare_message_info(cls, message_data: Dict[str, Any]) -> CB_MessageInfo:
         message_info = super()._prepare_message_info(message_data)
-        if message_info.actions and cls.COMMON_GROUP_KEY in message_data:
-            actions = message_info.actions - {MessageActions.DOWNLOAD_FILE} | {
-                MessageActions.DOWNLOAD_ALL
-            }
-            message_info.actions = actions
+        message_actions = message_info.actions
+        if message_actions and cls.COMMON_GROUP_KEY in message_data:
+            message_actions.pop(MessageActions.DOWNLOAD_FILE.code)
+            message_actions[MessageActions.DOWNLOAD_ALL.code] = {}
 
         if message_data.get("caption"):
-            message_info.actions.add(MessageActions.NOTE)
-
+            message_actions[MessageActions.NOTE.code] = {}
         return message_info
 
     @classmethod
@@ -240,19 +290,14 @@ class _DownloadableContentStrategy(ContentStrategy):
             result.merge(_result)
 
         if result:
-            new_actions = msgdoc.cb_message_info.actions - {MessageActions.DOWNLOAD_ALL}
-            msgdoc.update_message_info(new_actions=new_actions)
-
+            result = cls._update_actions(msgdoc, (MessageActions.DOWNLOAD_ALL,))
         return result
 
     @classmethod
     async def download(cls, msgdoc: MessageDocument, bot: Bot) -> AppResult:
         result = await cls._download(msgdoc, bot)
         if result:
-            new_actions = msgdoc.cb_message_info.actions - {
-                MessageActions.DOWNLOAD_FILE
-            }
-            msgdoc.update_message_info(new_actions=new_actions)
+            result = cls._update_actions(msgdoc, (MessageActions.DOWNLOAD_FILE,))
         return result
 
     @classmethod
@@ -380,9 +425,7 @@ class StickerContentStrategy(_DownloadableContentStrategy):
             result.merge(result_)
 
         if result:
-            new_actions = msgdoc.cb_message_info.actions - {MessageActions.DOWNLOAD_ALL}
-            msgdoc.update_message_info(new_actions=new_actions)
-
+            result = cls._update_actions(msgdoc, (MessageActions.DOWNLOAD_ALL,))
         return result
 
     @classmethod

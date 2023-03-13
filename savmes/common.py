@@ -1,8 +1,8 @@
 import logging
 import os
 import sys
-from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Set, Union
+from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional
 
 from aiogram import Bot
 
@@ -23,7 +23,7 @@ class CB_MessageInfo:
     perform_action_at: int = 0
     reply_action_message_id: int = 0
     entities: Optional[List[Dict[str, Any]]] = None
-    actions: Optional[Union[List, Set]] = None
+    actions: Dict[str, Any] = field(default_factory=lambda: {})
 
 
 async def save_file(bot: Bot, file_id: str, file_name: str, dir_path: str) -> AppResult:

@@ -12,3 +12,8 @@ logs:
 
 pretty:
 	isort . && black . && flake8 .
+
+clean:
+	docker-compose rm --force bot celery
+	docker images
+	docker rmi '$(docker images | grep 'cerrrbot')'

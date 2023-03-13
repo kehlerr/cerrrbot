@@ -4,9 +4,13 @@ from typing import List
 import requests
 from trilium_py.client import ETAPI
 
-from settings import (TRILIUM_NOTE_ID_BOOK_NOTES_ALL,
-                      TRILIUM_NOTE_ID_BOOK_ROOT, TRILIUM_NOTE_ID_BOOKMARKS_URL,
-                      TRILIUM_TOKEN, TRILIUM_URL)
+from settings import (
+    TRILIUM_NOTE_ID_BOOK_NOTES_ALL,
+    TRILIUM_NOTE_ID_BOOK_ROOT,
+    TRILIUM_NOTE_ID_BOOKMARKS_URL,
+    TRILIUM_TOKEN,
+    TRILIUM_URL,
+)
 
 trilium_client = ETAPI(TRILIUM_URL, TRILIUM_TOKEN)
 
@@ -86,7 +90,6 @@ def create_or_get_parent_note(
         content="none",
         noteId=forward_from_id,
     )
-    print(result)
     return result and forward_from_id
 
 

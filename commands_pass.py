@@ -9,8 +9,13 @@ from aiogram.filters import Command, CommandObject
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 
-from common import (Action, ContentData, UserAction,
-                    delete_messages_after_timeout, show_nav_content)
+from common import (
+    Action,
+    ContentData,
+    UserAction,
+    delete_messages_after_timeout,
+    show_nav_content,
+)
 from keyboards import Keyboards as kbs
 from keyboards import UserActionKeyboard
 from pass_helper import PASS_APP

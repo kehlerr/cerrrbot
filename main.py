@@ -17,6 +17,7 @@ from constants import CHECK_FOR_NEW_TASKS_TIMEOUT, Action, UserAction
 from keyboards import Keyboards as kbs
 from savmes.commands_savmes import savmes_router
 from settings import TOKEN
+from tasks import app as _  # noqa: F401
 
 logger = logging.getLogger("cerrrbot")
 logger.setLevel(logging.DEBUG)
