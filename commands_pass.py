@@ -108,9 +108,7 @@ async def impl_pass_show(message: types.Message, pass_path: str, state: FSMConte
 
 
 @pass_form_router.message(Command(commands=["pass_add"]))
-async def cmd_pass_add(
-    message: types.Message, state: FSMContext, command: CommandObject
-):
+async def cmd_pass_add(message: types.Message, state: FSMContext, command: CommandObject):
 
     pass_enter_data = PassEnterData(
         "Enter password:", PassForm.pass_add_new, kbs.back_to_main_menu
@@ -276,9 +274,7 @@ async def pass_list_cmd(
 
     content = []
     try:
-        content.extend(
-            [f"<code>{pass_}/</code>" for pass_ in passes_data["passsubdirs"]]
-        )
+        content.extend([f"<code>{pass_}/</code>" for pass_ in passes_data["passsubdirs"]])
     except KeyError:
         pass
 

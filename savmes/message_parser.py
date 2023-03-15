@@ -1,9 +1,8 @@
-from .common import CB_MessageInfo
-from .constants import MessageActions
+from .common import MessageActions, SVM_MsgdocInfo
 
 
 class MessageParser:
-    def __init__(self, message_text: str, message_info: CB_MessageInfo):
+    def __init__(self, message_text: str, message_info: SVM_MsgdocInfo):
         self._message_text = message_text
         self._message_info = message_info
         self.actions = {}

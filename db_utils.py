@@ -87,9 +87,7 @@ def init_db():
     existing_collections = db.list_collection_names()
     if existing_collections:
         logger.warning(
-            "DB already initialized with next collections:{}".format(
-                existing_collections
-            )
+            "DB already initialized with next collections:{}".format(existing_collections)
         )
         return
 

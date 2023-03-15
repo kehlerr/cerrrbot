@@ -15,7 +15,7 @@ from commands_pass import pass_form_router
 from common import CheckUserMiddleware, navigate_content
 from constants import CHECK_FOR_NEW_TASKS_TIMEOUT, Action, UserAction
 from keyboards import Keyboards as kbs
-from savmes.commands_savmes import savmes_router
+from savmes.commands import savmes_router
 from settings import TOKEN
 from tasks import app as _  # noqa: F401
 
@@ -52,9 +52,7 @@ class MenuAppData(callback_data.CallbackData, prefix="menu"):
 
 @main_router.message(Command(commands=["pass", "pass_menu"]))
 @main_router.callback_query(MenuAppData.filter(F.app_name == MenuApp.pass_app))
-async def show_pass_menu(
-    message: types.Message, bot: Bot, state: FSMContext, event_chat
-):
+async def show_pass_menu(message: types.Message, bot: Bot, state: FSMContext, event_chat):
     logger.info(f"[{message.from_user}] Shown pass_menu")
     prompt = "Choose action for pass store:"
     commands = (
@@ -89,9 +87,7 @@ async def show_main_menu(message: types.Message):
 def main_menu_kb() -> types.InlineKeyboardMarkup:
     kb_builder = InlineKeyboardBuilder()
     for app in MenuApp:
-        kb_builder.button(
-            text=app.value.title(), callback_data=MenuAppData(app_name=app)
-        )
+        kb_builder.button(text=app.value.title(), callback_data=MenuAppData(app_name=app))
     return kb_builder.as_markup()
 
 

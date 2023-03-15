@@ -49,10 +49,16 @@ class AppResult:
 
     def merge(self, *other_results) -> None:
         for result in other_results:
-            if not result.status:
-                self.status = result.status
-                self._info.append(str(result.info))
-                self.data.update(result.data)
+            if not result:
+                if isinstance(result, bool):
+                    self.status = result
+                else:
+                    self._merge_another(result)
+
+    def _merge_another(self, app_result):
+        self.status = app_result.status
+        self._info.append(str(app_result.info))
+        self.data.update(app_result.data)
 
 
 async def navigate_content(query, callback_data: UserAction, state: FSMContext):
@@ -93,9 +99,7 @@ async def show_nav_content(message: Message, state: FSMContext, direction: int =
     if direction == 0 and nav_idx == 0:
         await message.answer(answer_text, reply_markup=reply_markup, parse_mode="HTML")
     else:
-        await message.edit_text(
-            answer_text, reply_markup=reply_markup, parse_mode="HTML"
-        )
+        await message.edit_text(answer_text, reply_markup=reply_markup, parse_mode="HTML")
 
 
 class CheckUserMiddleware(BaseMiddleware):

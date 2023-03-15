@@ -4,7 +4,7 @@ import sys
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 from aiogram import Bot
-from aiogram.types import ContentType, Message
+from aiogram.types import ContentType
 from celery import signature
 
 current = os.path.dirname(os.path.realpath(__file__))
@@ -13,95 +13,34 @@ sys.path.append(parent)
 
 import db_utils as db
 from common import AppResult, create_directory
-from settings import TIMEOUT_BEFORE_PERFORMING_DEFAULT_ACTION
 from trilium_helper import add_bookmark_urls, add_note
 
-from .common import CB_MessageInfo, save_file
-from .constants import MessageAction, MessageActions
+from .common import MessageActions, SVM_MsgdocInfo, SVM_ReplyInfo, save_file
+from .content_strategy_base import ContentStrategyBase
 from .message_document import MessageDocument
-from .message_parser import MessageParser
 
 logger = logging.getLogger("cerrrbot")
 
 
-class ContentStrategy:
-    DEFAULT_MESSAGE_TTL = TIMEOUT_BEFORE_PERFORMING_DEFAULT_ACTION
-    DEFAULT_ACTION = MessageActions.DELETE_1
-    COMMON_GROUP_KEY = "media_group_id"
-
-    POSSIBLE_ACTIONS = {
-        MessageActions.SAVE,
-        MessageActions.NOTE,
-        MessageActions.DELETE_REQUEST,
-    }
-
-    @classmethod
-    async def add_new_message(cls, message: Message) -> AppResult:
-        message_data = message.dict(exclude_none=True, exclude_defaults=True)
-        logger.info("Adding message: {}".format(message_data))
-        add_result = db.NewMessagesCollection.add_document(message_data)
-        if add_result:
-            added_message_id = add_result.data["_id"]
-            logger.info("Saved new message with _id:[{}]".format(str(added_message_id)))
-            message_info = cls._prepare_message_info(message_data)
-            MessageDocument(added_message_id).update_message_info(
-                message_info.action,
-                message_info.actions,
-                cls.DEFAULT_MESSAGE_TTL,
-                message_info.entities,
-            )
-            add_result.data["message_info"] = message_info
-        else:
-            logger.error(
-                "Error occured while adding received message: {}".format(add_result)
-            )
-        return add_result
-
-    @classmethod
-    def _prepare_message_info(cls, message_data: Dict[str, Any]) -> CB_MessageInfo:
-        message_info = CB_MessageInfo(
-            action=cls.DEFAULT_ACTION,
-            entities=message_data.get("caption_entities")
-            or message_data.get("entities", []),
-        )
-        common_group_id = message_data.get(cls.COMMON_GROUP_KEY)
-        if (
-            not common_group_id
-            or not db.NewMessagesCollection.exists_document_in_group(
-                cls.COMMON_GROUP_KEY, common_group_id
-            )
-        ):
-            message_info.actions = {action.code: {} for action in cls.POSSIBLE_ACTIONS}
-            cls._parse_message(message_data, message_info)
-        return message_info
-
-    @classmethod
-    def _parse_message(
-        cls, message_data: Dict[str, Any], message_info: CB_MessageInfo
-    ) -> None:
-        parser = MessageParser(message_data["text"], message_info)
-        parser.parse()
-        message_info.actions.update(parser.actions)
-
+class ContentStrategy(ContentStrategyBase):
     @classmethod
     async def perform_action(
         cls, action_code: str, msgdoc: MessageDocument, bot: Bot
     ) -> AppResult:
         action = MessageActions.ACTION_BY_CODE.get(action_code)
         if not action:
-            logger.error("Action not found: {}".format(action_code))
+            logger.error(f"Action not found: {action_code}")
             return AppResult(False)
 
         try:
             action_method = getattr(cls, action.method)
         except AttributeError:
-            logger.error("Action method not found:{}".format(action.method))
+            logger.error(f"Action method not found:{action.method}")
             return AppResult(False)
 
         result = await action_method(msgdoc, bot, **action.method_args)
-        if "message_info" not in result.data:
-            result.data["message_info"] = msgdoc.cb_message_info
-
+        if result:
+            result.data.setdefault("reply_info", msgdoc.cb_message_info)
         logger.info(f"Result of performed action:{result}")
         return result
 
@@ -109,8 +48,6 @@ class ContentStrategy:
     async def custom_task(
         cls, msgdoc: MessageDocument, bot: Bot, *args, **kwargs
     ) -> AppResult:
-        added_task_data = {}
-
         action_code = kwargs["code"]
         task_data = msgdoc.cb_message_info.actions[action_code]
         task_id = task_data.get("task_id")
@@ -118,14 +55,15 @@ class ContentStrategy:
             task_id = cls._run_task(kwargs["task_name"], task_data)
             if not task_id:
                 return AppResult(False)
+            action = MessageActions.ACTION_BY_CODE[action_code]
+            new_action_data = {
+                "task_id": task_id,
+                "additional_caption": " [in progress]",
+            }
+            result = cls._update_actions(msgdoc, to_add={action: new_action_data})
         else:
-            added_task_data["result_info"] = "Task is in progress"
-
-        action = MessageActions.ACTION_BY_CODE[action_code]
-        added_task_data.update(
-            {"additional_caption": "[in progress]", "task_id": str(task_id)}
-        )
-        result = cls._update_actions(msgdoc, to_add={action: added_task_data})
+            result_data = {"reply_info": SVM_ReplyInfo(popup_text="Task is in progress")}
+            result = AppResult(data=result_data)
 
         return result
 
@@ -158,9 +96,7 @@ class ContentStrategy:
     @classmethod
     async def note_bookmark_url(cls, msgdoc: MessageDocument, bot: Bot) -> AppResult:
         text_links = [
-            e["url"]
-            for e in msgdoc.cb_message_info.entities
-            if e["type"] == "text_link"
+            e["url"] for e in msgdoc.cb_message_info.entities if e["type"] == "text_link"
         ]
         result = AppResult(add_bookmark_urls(msgdoc.message_text, text_links))
         if result:
@@ -181,31 +117,29 @@ class ContentStrategy:
 
     @classmethod
     async def delete_request(cls, *args, **kwargs) -> AppResult:
-        message_info = CB_MessageInfo(
+        reply_info = SVM_ReplyInfo(
             actions={
-                MessageActions.DELETE_1.code: {},
-                MessageActions.DELETE_2.code: {},
-                MessageActions.DELETE_3.code: {},
-                MessageActions.DELETE_NOW.code: {},
+                MessageActions.DELETE_1,
+                MessageActions.DELETE_2,
+                MessageActions.DELETE_3,
+                MessageActions.DELETE_NOW,
             }
         )
-        return AppResult(True, data={"message_info": message_info})
+        return AppResult(True, data={"reply_info": reply_info})
 
     @classmethod
     async def delete(cls, msgdoc: MessageDocument, bot: Bot) -> AppResult:
         result = msgdoc.delete()
         if result:
             result = await cls.delete_from_chat(msgdoc, bot)
-            result.data.update({"message_info": None})
         return result
 
     @classmethod
     async def delete_from_chat(cls, msgdoc: MessageDocument, bot: Bot) -> AppResult:
         result = AppResult()
-        chat_id = msgdoc.chat.id
         try:
             result = await bot.delete_message(
-                chat_id, msgdoc.cb_message_info.reply_action_message_id
+                msgdoc.chat.id, msgdoc.cb_message_info.reply_action_message_id
             )
             result = AppResult(result)
         except AttributeError:
@@ -217,15 +151,13 @@ class ContentStrategy:
             result = AppResult(False, str(exc))
 
         try:
-            result_ = await bot.delete_message(chat_id, msgdoc.message_id)
-            result_deleting_message = AppResult(result_, data={"message_info": None})
+            result_ = await bot.delete_message(msgdoc.chat.id, msgdoc.message_id)
         except Exception as exc:
             logger.error(exc)
-            result_deleting_message = AppResult(False, str(exc))
-        result.merge(result_deleting_message)
+            result_ = AppResult(False, str(exc))
 
-        result.data.update({"message_info": None})
-
+        result.merge(result_)
+        result.data.update({"reply_info": SVM_ReplyInfo()})
         return result
 
     @classmethod
@@ -242,25 +174,6 @@ class ContentStrategy:
     async def download_all(cls, *args):
         raise NotImplementedError
 
-    @classmethod
-    def _update_actions(
-        cls,
-        msgdoc: MessageDocument,
-        to_delete: Optional[List[MessageAction]] = None,
-        to_add: Optional[Dict[MessageAction, Any]] = None,
-    ) -> AppResult:
-        message_actions = msgdoc.cb_message_info.actions
-        if to_delete:
-            for action in to_delete:
-                message_actions.pop(action.code, None)
-
-        if to_add:
-            for action, data in to_add.items():
-                message_actions[action.code] = data or {}
-
-        result = msgdoc.update_message_info(new_actions=message_actions)
-        return result
-
 
 class _DownloadableContentStrategy(ContentStrategy):
     content_type_key: str
@@ -270,7 +183,7 @@ class _DownloadableContentStrategy(ContentStrategy):
     POSSIBLE_ACTIONS = {MessageActions.DELETE_REQUEST, MessageActions.DOWNLOAD_FILE}
 
     @classmethod
-    def _prepare_message_info(cls, message_data: Dict[str, Any]) -> CB_MessageInfo:
+    def _prepare_message_info(cls, message_data: Dict[str, Any]) -> SVM_MsgdocInfo:
         message_info = super()._prepare_message_info(message_data)
         message_actions = message_info.actions
         if message_actions and cls.COMMON_GROUP_KEY in message_data:
@@ -282,6 +195,26 @@ class _DownloadableContentStrategy(ContentStrategy):
         return message_info
 
     @classmethod
+    async def delete(cls, msgdoc: MessageDocument, bot: Bot) -> AppResult:
+        msgdocs = cls._get_messages_by_group(msgdoc)
+        if not msgdocs:
+            result = await super().delete(msgdoc, bot)
+            return result
+
+        result = AppResult()
+        for msgdoc_ in msgdocs:
+            result_ = await super().delete(msgdoc_, bot)
+            result.merge(result_)
+        return result
+
+    @classmethod
+    async def download(cls, msgdoc: MessageDocument, bot: Bot) -> AppResult:
+        result = await cls._download(msgdoc, bot)
+        if result:
+            result = cls._update_actions(msgdoc, (MessageActions.DOWNLOAD_FILE,))
+        return result
+
+    @classmethod
     async def download_all(cls, msgdoc: MessageDocument, bot: Bot):
         result = AppResult()
         for _msgdoc in cls._get_messages_by_group(msgdoc):
@@ -291,13 +224,6 @@ class _DownloadableContentStrategy(ContentStrategy):
 
         if result:
             result = cls._update_actions(msgdoc, (MessageActions.DOWNLOAD_ALL,))
-        return result
-
-    @classmethod
-    async def download(cls, msgdoc: MessageDocument, bot: Bot) -> AppResult:
-        result = await cls._download(msgdoc, bot)
-        if result:
-            result = cls._update_actions(msgdoc, (MessageActions.DOWNLOAD_FILE,))
         return result
 
     @classmethod
@@ -352,8 +278,15 @@ class _DownloadableContentStrategy(ContentStrategy):
         return cls.file_extension
 
     @classmethod
-    def _get_messages_by_group(cls, msgdoc: MessageDocument) -> List[MessageDocument]:
-        filter_search = {cls.COMMON_GROUP_KEY: getattr(msgdoc, cls.COMMON_GROUP_KEY)}
+    def _get_messages_by_group(cls, msgdoc: MessageDocument) -> Tuple[MessageDocument]:
+        try:
+            group_key_value = getattr(msgdoc, cls.COMMON_GROUP_KEY)
+            if group_key_value is None:
+                raise TypeError
+            filter_search = {cls.COMMON_GROUP_KEY: group_key_value}
+        except (AttributeError, TypeError):
+            return None
+
         return (
             MessageDocument(md["_id"])
             for md in db.NewMessagesCollection.get_documents_by_filter(filter_search)

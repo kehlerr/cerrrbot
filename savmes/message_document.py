@@ -14,8 +14,7 @@ sys.path.append(parent)
 import db_utils as db
 from common import AppResult
 
-from .common import CB_MessageInfo
-from .constants import MessageAction, MessageActions
+from .common import MessageAction, MessageActions, SVM_MsgdocInfo
 
 logger = logging.getLogger("cerrrbot")
 
@@ -35,9 +34,7 @@ class MessageDocument(Message):
         except AttributeError as exc:
             logger.error(f"Empty message info: {exc}")
             cb_message_info = {}
-        self.cb_message_info = from_dict(
-            data_class=CB_MessageInfo, data=cb_message_info
-        )
+        self.cb_message_info = from_dict(data_class=SVM_MsgdocInfo, data=cb_message_info)
 
     def add(self, collection) -> AppResult:
         if self.collection == collection:

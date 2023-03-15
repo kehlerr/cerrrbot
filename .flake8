@@ -1,19 +1,11 @@
-[tool.black]
-line-length = 120
-target-version = ['py38']
-
 [flake8]
 max-attributes = 8
 max-line-length = 120
 max-line-complexity = 15
 max-local-variables = 6
-max-module-members = 10
-max-methods = 9
+max-module-members = 5
+max-methods = 10
 max-string-usages = 5
-ignore = 
-	# module level import not at top of file
-	E402,
-
 exclude =
     # No need to traverse git directory
     .git,
@@ -21,5 +13,11 @@ exclude =
     __pycache__,
     # Virtual env directory
     .venv,
-    settings.py
-    config.py
+extend-ignore =
+    # whitespace before ':'
+    E203,
+    # line break before binary operator
+    W503,
+ignore =
+    # module level import not at top of file
+    E402,
