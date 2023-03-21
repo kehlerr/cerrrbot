@@ -1,6 +1,7 @@
 import logging
 import os
 import sys
+from dataclasses import replace
 from typing import Any, Dict, List, Optional
 
 from aiogram.types import Message
@@ -45,7 +46,7 @@ class ContentStrategyBase:
                 cls.DEFAULT_MESSAGE_TTL,
                 message_info.entities,
             )
-            add_result.data["reply_info"] = message_info
+            cls._prepare_reply_info(message_info, add_result.data)
         else:
             logger.error(
                 "Error occured while adding received message: {}".format(add_result)
@@ -66,6 +67,28 @@ class ContentStrategyBase:
             message_info.actions = {action.code: {} for action in cls.POSSIBLE_ACTIONS}
             cls._parse_message(message_data, message_info)
         return message_info
+
+    @classmethod
+    def _prepare_reply_info(
+        cls, message_info: SVM_MsgdocInfo,
+        result_data: Dict[str, Any]
+    ) -> None:
+        reply_info = result_data.get("reply_info", message_info)
+        if not reply_info.actions:
+            return
+
+        reply_actions = []
+        for action_code, action_data in reply_info.actions.items():
+            action = MessageActions.ACTION_BY_CODE[action_code]
+            additional_caption = action_data.get("additional_caption")
+            if additional_caption:
+                action = replace(
+                    action, caption=f"{action.caption}{additional_caption}"
+                )
+            reply_actions.append(action)
+        reply_info.actions = sorted(reply_actions)
+
+        result_data["reply_info"] = reply_info
 
     @classmethod
     def _parse_message(

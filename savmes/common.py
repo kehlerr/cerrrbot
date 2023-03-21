@@ -152,6 +152,7 @@ class SVM_MsgdocInfo:
 @dataclass
 class SVM_ReplyInfo(SVM_MsgdocInfo):
     popup_text: Optional[str] = None
+    need_edit_buttons: Optional[bool] = True
 
     def __post_init__(self):
         if type(self.actions) in {list, tuple, set}:

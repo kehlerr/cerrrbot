@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from aiogram import Bot, F, Router
 from aiogram.filters.callback_data import CallbackData
@@ -12,7 +12,7 @@ from aiogram.types import (
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from .api import add_new_message, perform_message_action
-from .common import MessageActions
+from .common import MessageActions, MessageAction
 from .constants import CUSTOM_MESSAGE_MIN_ORDER
 from .message_document import MessageDocument
 
@@ -65,40 +65,37 @@ async def on_action_pressed(
         await query.answer("Some error/exception occured, check logs for details.")
         return
 
-    await _process_pressed_action_result(query, message_id, result.data)
+    await _process_pressed_action_result(query, message_id, result.data["reply_info"])
 
 
 async def _process_pressed_action_result(
-    query: CallbackQuery, message_id: str, result_data: Dict[str, Any]
+    query: CallbackQuery, message_id: str, reply_info: Dict[str, Any]
 ) -> None:
-    reply_info = result_data["reply_info"]
     try:
         if reply_info.popup_text:
             await query.answer(reply_info.popup_text)
-            return
+            if not reply_info.need_edit_buttons:
+                return
     except (AttributeError, KeyError):
         pass
 
-    if reply_info.actions:
-        next_markup = _build_message_actions_menu_kb(reply_info.actions, message_id)
-        await query.message.edit_reply_markup(next_markup)
-    else:
-        await query.answer("Superb done, Your Majesty!")
+    if not reply_info.actions:
+        await query.answer()
+        return
+
+    next_markup = _build_message_actions_menu_kb(reply_info.actions, message_id)
+    await query.message.edit_reply_markup(next_markup)
 
 
 def _build_message_actions_menu_kb(
-    actions_data: Dict[str, Any], message_id: str
+    reply_actions: List[MessageAction], message_id: str
 ) -> InlineKeyboardMarkup:
-    message_actions = sorted(
-        [MessageActions.ACTION_BY_CODE[action] for action in actions_data]
-    )
     kb_builder = InlineKeyboardBuilder()
     actions_buttons = []
     custom_actions_buttons = []
-    for action in message_actions:
-        additional_caption = actions_data[action.code].get("additional_caption", "")
+    for action in reply_actions:
         button = InlineKeyboardButton(
-            text=f"{action.caption}{additional_caption}",
+            text=action.caption,
             callback_data=SaveMessageData(
                 action=action.code,
                 message_id=message_id,

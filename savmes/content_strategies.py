@@ -15,7 +15,7 @@ import db_utils as db
 from common import AppResult, create_directory
 from trilium_helper import add_bookmark_urls, add_note
 
-from .common import MessageActions, SVM_MsgdocInfo, SVM_ReplyInfo, save_file
+from .common import MessageActions, MessageAction, SVM_MsgdocInfo, SVM_ReplyInfo, save_file
 from .content_strategy_base import ContentStrategyBase
 from .message_document import MessageDocument
 
@@ -40,7 +40,7 @@ class ContentStrategy(ContentStrategyBase):
 
         result = await action_method(msgdoc, bot, **action.method_args)
         if result:
-            result.data.setdefault("reply_info", msgdoc.cb_message_info)
+            cls._prepare_reply_info(msgdoc.cb_message_info, result.data)
         logger.info(f"Result of performed action:{result}")
         return result
 
@@ -62,7 +62,12 @@ class ContentStrategy(ContentStrategyBase):
             }
             result = cls._update_actions(msgdoc, to_add={action: new_action_data})
         else:
-            result_data = {"reply_info": SVM_ReplyInfo(popup_text="Task is in progress")}
+            result_data = {
+                "reply_info": SVM_ReplyInfo(
+                    popup_text="Task is in progress",
+                    need_edit_buttons=False
+                )
+            }
             result = AppResult(data=result_data)
 
         return result
