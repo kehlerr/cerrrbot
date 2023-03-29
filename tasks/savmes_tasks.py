@@ -12,6 +12,7 @@ parent = os.path.dirname(current)
 sys.path.append(parent)
 
 from common import AppResult, create_directory
+from trilium_helper import add_bookmark_urls, add_note
 
 logger = logging.getLogger("cerrrbot")
 
@@ -112,3 +113,17 @@ class TelegraphDownloader:
             fd.write(response.content)
 
         return AppResult()
+
+
+class TriliumNote(Task):
+    def run(self, _, msgdoc) -> AppResult:
+        forward_from_id, title = msgdoc.get_from_chat_data()
+        if not forward_from_id:
+            forward_from_id, title = msgdoc.get_from_user_data()
+
+        return AppResult(add_note(msgdoc.message_text, forward_from_id, title))
+
+
+class TriliumBookmark(Task):
+    def run(self, links, msgdoc) -> AppResult:
+        return AppResult(add_bookmark_urls(msgdoc.message_text, links))

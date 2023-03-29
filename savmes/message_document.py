@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 import logging
 import os
 import sys
 from dataclasses import asdict
 from datetime import datetime
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Sequence, Tuple
 
 from aiogram.types import Message
 from dacite import from_dict
@@ -15,6 +17,7 @@ import db_utils as db
 from common import AppResult
 
 from .common import MessageAction, MessageActions, SVM_MsgdocInfo
+from .constants import COMMON_GROUP_KEY
 
 logger = logging.getLogger("cerrrbot")
 
@@ -36,7 +39,9 @@ class MessageDocument(Message):
             cb_message_info = {}
         self.cb_message_info = from_dict(data_class=SVM_MsgdocInfo, data=cb_message_info)
 
-    def add(self, collection) -> AppResult:
+    def add_to_collection(
+        self, collection: Optional[db.CollectionModel] = db.SavedMessagesCollection
+    ) -> AppResult:
         if self.collection == collection:
             return AppResult(
                 False,
@@ -52,6 +57,20 @@ class MessageDocument(Message):
         if add_result:
             self.collection = collection
         return add_result
+
+    def get_msgdocs_by_group(self) -> Optional[Sequence[MessageDocument]]:
+        try:
+            group_key_value = getattr(self, COMMON_GROUP_KEY)
+            if group_key_value is None:
+                raise TypeError
+            filter_search = {COMMON_GROUP_KEY: group_key_value}
+        except (AttributeError, TypeError):
+            return None
+
+        return (
+            MessageDocument(md["_id"])
+            for md in db.NewMessagesCollection.get_documents_by_filter(filter_search)
+        )
 
     def delete(self) -> AppResult:
         delete_result = self.collection.del_document(self._id)

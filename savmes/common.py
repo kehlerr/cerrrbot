@@ -45,9 +45,7 @@ class MESSAGE_ACTIONS:
     DOWNLOAD_FILE = MessageAction("DL", "Download", 2, "download")
     DOWNLOAD_ALL = MessageAction("DLAL", "Download all", 3, "download_all")
     DOWNLOAD_DELAY = MessageAction("DLDE", "Download delay", 3, "download_delay")
-    NOTE = MessageAction("NOTE", "Note", 4, "add_note")
     TODO = MessageAction("NOTO", "ToDo", 5, "note_todo")
-    BOOKMARK = MessageAction("AB", "Bookmark", 6, "note_bookmark_url")
     DELETE_FROM_CHAT = MessageAction("DFC", "Delete from chat", 1, "delete_from_chat")
     DELETE_NOW = MessageAction("DELN", "Delete now", 1, "delete")
     DELETE_1 = MessageAction(
@@ -68,9 +66,7 @@ class MESSAGE_ACTIONS:
         DOWNLOAD_ALL,
         DOWNLOAD_ALL,
         DOWNLOAD_DELAY,
-        NOTE,
         TODO,
-        BOOKMARK,
         DELETE_FROM_CHAT,
         DELETE_NOW,
         DELETE_1,
@@ -95,21 +91,26 @@ class CustomMessageAction(MessageAction):
                 f"Action order: {self.order} less than custom message minimal order "
             )
 
-        if "regex" in self.method_args:
-            self.method_args["regex"] = re.compile(
-                self.method_args["regex"], re.IGNORECASE
-            )
-
         self.method_args["code"] = self.code
 
-    def parse(self, text: str) -> List[str]:
-        regex = self.method_args["regex"]
-        parsed_groups_data = []
+    def parse(self, text: str, links: List[str]) -> List[str]:
+        parsed_data = []
+        if self.method_args.get("parse_text_links"):
+            parsed_data = list(links)
+
+        regex_pattern = self.method_args.get("regex")
+        if not regex_pattern:
+            return parsed_data
+        elif regex_pattern == "*":
+            parsed_data.append(text)
+            return parsed_data
+
+        regex = re.compile(regex_pattern, re.IGNORECASE)
         for data in regex.finditer(text):
-            parsed_data = data.groupdict()
-            if parsed_data:
-                parsed_groups_data.append(parsed_data)
-        return parsed_groups_data
+            parsed = data.groupdict()
+            if parsed:
+                parsed_data.append(parsed)
+        return parsed_data
 
 
 class CUSTOM_MESSAGE_ACTIONS:
@@ -126,13 +127,33 @@ CustomMessageActions = CUSTOM_MESSAGE_ACTIONS(
         [
             "TGPH_DL",
             "Download Telegraph",
-            500,
+            600,
             "custom_task",
             {
                 "task_name": "SavmesTask",
                 "regex": r"(?P<url>https?:\/\/(www\.)?telegra.ph\/([a-zA-Z0-9-_]+)\/?)",
+                "is_instant": True,
             },
-        ]
+        ],
+        [
+            "CST_NOTE",
+            "Note",
+            500,
+            "custom_task",
+            {"task_name": "TriliumNote", "regex": "*", "is_instant": True},
+        ],
+        [
+            "CST_BOOKMARK",
+            "Bookmark",
+            501,
+            "custom_task",
+            {
+                "task_name": "TriliumBookmark",
+                "regex": r"^https?:\\/\\/(?:www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b(?:[-a-zA-Z0-9()@:%_\\+.~#?&\\/=]*)$",
+                "is_instant": True,
+                "parse_text_links": True,
+            },
+        ],
     ]
 )
 

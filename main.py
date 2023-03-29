@@ -15,9 +15,7 @@ from commands_pass import pass_form_router
 from common import CheckUserMiddleware, navigate_content
 from constants import CHECK_FOR_NEW_TASKS_TIMEOUT, Action, UserAction
 from keyboards import Keyboards as kbs
-from savmes.commands import savmes_router
 from settings import TOKEN
-from tasks import app as _  # noqa: F401
 
 logger = logging.getLogger("cerrrbot")
 logger.setLevel(logging.DEBUG)
@@ -112,7 +110,7 @@ async def main():
     loop.create_task(scheduled(bot))
 
     main_router.include_router(pass_form_router)
-    main_router.include_router(savmes_router)
+    main_router.include_router(savmes.router)
 
     dp = Dispatcher()
     dp.include_router(main_router)

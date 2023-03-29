@@ -12,14 +12,14 @@ from aiogram.types import (
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from .api import add_new_message, perform_message_action
-from .common import MessageActions, MessageAction
+from .common import MessageAction, MessageActions
 from .constants import CUSTOM_MESSAGE_MIN_ORDER
 from .message_document import MessageDocument
 
 logger = logging.getLogger("cerrrbot")
 
 
-savmes_router = Router()
+router = Router()
 
 
 class SaveMessageData(CallbackData, prefix="SVM"):
@@ -27,7 +27,7 @@ class SaveMessageData(CallbackData, prefix="SVM"):
     message_id: str
 
 
-@savmes_router.message()
+@router.message()
 async def on_received_new_common_message(message: Message) -> None:
     logger.info(f"Received message: {message}")
     result = await add_new_message(message)
@@ -54,7 +54,7 @@ async def _process_received_message(
     )
 
 
-@savmes_router.callback_query(SaveMessageData.filter(F.action.in_(MessageActions.CODES)))
+@router.callback_query(SaveMessageData.filter(F.action.in_(MessageActions.CODES)))
 async def on_action_pressed(
     query: CallbackQuery, callback_data: SaveMessageData, bot: Bot
 ) -> None:
@@ -92,7 +92,7 @@ def _build_message_actions_menu_kb(
 ) -> InlineKeyboardMarkup:
     kb_builder = InlineKeyboardBuilder()
     actions_buttons = []
-    custom_actions_buttons = []
+    custom_actions_buttons = {}
     for action in reply_actions:
         button = InlineKeyboardButton(
             text=action.caption,
@@ -102,10 +102,11 @@ def _build_message_actions_menu_kb(
             ).pack(),
         )
         if action.order >= CUSTOM_MESSAGE_MIN_ORDER:
-            custom_actions_buttons.append(button)
+            custom_actions_buttons.setdefault(action.order // 100, []).append(button)
         else:
             actions_buttons.append(button)
     kb_builder.row(*actions_buttons)
-    kb_builder.row(*custom_actions_buttons)
+    for buttons in custom_actions_buttons.values():
+        kb_builder.row(*buttons)
 
     return kb_builder.as_markup()

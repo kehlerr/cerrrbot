@@ -5,17 +5,24 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 from aiogram import Bot
 from aiogram.types import ContentType
-from celery import signature
+from celery import signature, states
+from celery.result import AsyncResult as CeleryTaskResult
 
 current = os.path.dirname(os.path.realpath(__file__))
 parent = os.path.dirname(current)
 sys.path.append(parent)
 
-import db_utils as db
 from common import AppResult, create_directory
-from trilium_helper import add_bookmark_urls, add_note
+from tasks import app
 
-from .common import MessageActions, MessageAction, SVM_MsgdocInfo, SVM_ReplyInfo, save_file
+from .common import (
+    CustomMessageAction,
+    MessageActions,
+    SVM_MsgdocInfo,
+    SVM_ReplyInfo,
+    save_file,
+)
+from .constants import COMMON_GROUP_KEY
 from .content_strategy_base import ContentStrategyBase
 from .message_document import MessageDocument
 
@@ -46,42 +53,64 @@ class ContentStrategy(ContentStrategyBase):
 
     @classmethod
     async def custom_task(
-        cls, msgdoc: MessageDocument, bot: Bot, *args, **kwargs
+        cls, msgdoc: MessageDocument, bot: Bot, *args, **task_info
     ) -> AppResult:
-        action_code = kwargs["code"]
-        task_data = msgdoc.cb_message_info.actions[action_code]
-        task_id = task_data.get("task_id")
-        if not task_id:
-            task_id = cls._run_task(kwargs["task_name"], task_data)
-            if not task_id:
-                return AppResult(False)
-            action = MessageActions.ACTION_BY_CODE[action_code]
-            new_action_data = {
-                "task_id": task_id,
-                "additional_caption": " [in progress]",
-            }
-            result = cls._update_actions(msgdoc, to_add={action: new_action_data})
+        action_code = task_info["code"]
+        action = MessageActions.ACTION_BY_CODE[action_code]
+        action_data = msgdoc.cb_message_info.actions[action_code]
+        task_id = action_data.get("task_id")
+        if task_id:
+            result = cls._get_task_reply(task_id, action, msgdoc)
         else:
-            result_data = {
-                "reply_info": SVM_ReplyInfo(
-                    popup_text="Task is in progress",
-                    need_edit_buttons=False
-                )
-            }
-            result = AppResult(data=result_data)
-
+            result = cls._create_task(task_info, action_data["data"], action, msgdoc)
         return result
 
     @classmethod
-    def _run_task(cls, task_name: str, task_data: Dict[str, Any]) -> Optional[str]:
+    def _create_task(
+        cls,
+        task_info: str,
+        task_args: Dict[str, Any],
+        action: CustomMessageAction,
+        msgdoc: MessageDocument,
+    ) -> AppResult:
+        task_name = task_info["task_name"]
+        task_signature = signature(f"tasks.savmes_tasks.{task_name}")
+        if task_info.get("is_instant", False):
+            task_signature(task_args, msgdoc)
+            return cls._update_actions(msgdoc, (action,))
+
         try:
-            task_signature = signature(f"tasks.savmes_tasks.{task_name}")
-            result = task_signature.delay(task_data["data"])
+            result = task_signature.delay(task_args)
+            task_id = str(result)
+            task_status = CeleryTaskResult(task_id, app=app).status
         except Exception as exc:
             logger.exception(exc)
-            return None
+            return AppResult(False)
 
-        return str(result)
+        result_data = {
+            "task_id": task_id,
+            "additional_caption": f" [{task_status}]",
+        }
+
+        result = cls._update_actions(msgdoc, to_add={action: result_data})
+        return result
+
+    @classmethod
+    def _get_task_reply(
+        cls, task_id: str, action: CustomMessageAction, msgdoc: MessageDocument
+    ) -> AppResult:
+        task_result = CeleryTaskResult(task_id, app=app)
+        status = task_result.status
+        reply_info = SVM_ReplyInfo(popup_text=status)
+        if status == states.SUCCESS:
+            result = cls._update_actions(msgdoc, (action,))
+            reply_info.actions = msgdoc.cb_message_info.actions
+        else:
+            result = AppResult()
+            reply_info.need_edit_buttons = False
+        result.data["reply_info"] = reply_info
+
+        return result
 
     @classmethod
     async def save(cls, msgdoc: MessageDocument, bot: Bot) -> AppResult:
@@ -89,35 +118,13 @@ class ContentStrategy(ContentStrategyBase):
         if not del_result:
             return del_result
 
-        result = msgdoc.add(db.SavedMessagesCollection)
+        result = msgdoc.add_to_collection()
         if result:
             result = cls._update_actions(
                 msgdoc,
                 (MessageActions.SAVE, MessageActions.DELETE_REQUEST),
                 {MessageActions.DELETE_FROM_CHAT: None},
             )
-        return result
-
-    @classmethod
-    async def note_bookmark_url(cls, msgdoc: MessageDocument, bot: Bot) -> AppResult:
-        text_links = [
-            e["url"] for e in msgdoc.cb_message_info.entities if e["type"] == "text_link"
-        ]
-        result = AppResult(add_bookmark_urls(msgdoc.message_text, text_links))
-        if result:
-            result = cls._update_actions(msgdoc, (MessageActions.BOOKMARK,))
-        return result
-
-    @classmethod
-    async def add_note(cls, msgdoc: MessageDocument, bot: Bot) -> AppResult:
-        forward_from_id, title = msgdoc.get_from_chat_data()
-        if not forward_from_id:
-            forward_from_id, title = msgdoc.get_from_user_data()
-
-        result = AppResult(add_note(msgdoc.message_text, forward_from_id, title))
-        if result:
-            result = cls._update_actions(msgdoc, (MessageActions.NOTE,))
-
         return result
 
     @classmethod
@@ -191,17 +198,14 @@ class _DownloadableContentStrategy(ContentStrategy):
     def _prepare_message_info(cls, message_data: Dict[str, Any]) -> SVM_MsgdocInfo:
         message_info = super()._prepare_message_info(message_data)
         message_actions = message_info.actions
-        if message_actions and cls.COMMON_GROUP_KEY in message_data:
+        if message_actions and COMMON_GROUP_KEY in message_data:
             message_actions.pop(MessageActions.DOWNLOAD_FILE.code)
             message_actions[MessageActions.DOWNLOAD_ALL.code] = {}
-
-        if message_data.get("caption"):
-            message_actions[MessageActions.NOTE.code] = {}
         return message_info
 
     @classmethod
     async def delete(cls, msgdoc: MessageDocument, bot: Bot) -> AppResult:
-        msgdocs = cls._get_messages_by_group(msgdoc)
+        msgdocs = msgdoc.get_msgdocs_by_group()
         if not msgdocs:
             result = await super().delete(msgdoc, bot)
             return result
@@ -222,7 +226,7 @@ class _DownloadableContentStrategy(ContentStrategy):
     @classmethod
     async def download_all(cls, msgdoc: MessageDocument, bot: Bot):
         result = AppResult()
-        for _msgdoc in cls._get_messages_by_group(msgdoc):
+        for _msgdoc in msgdoc.get_msgdocs_by_group():
             _cls = cls_strategy_by_content_type[_msgdoc.content_type]
             _result = await _cls._download(_msgdoc, bot)
             result.merge(_result)
@@ -281,21 +285,6 @@ class _DownloadableContentStrategy(ContentStrategy):
     @classmethod
     def _get_extension(cls, *args) -> str:
         return cls.file_extension
-
-    @classmethod
-    def _get_messages_by_group(cls, msgdoc: MessageDocument) -> Tuple[MessageDocument]:
-        try:
-            group_key_value = getattr(msgdoc, cls.COMMON_GROUP_KEY)
-            if group_key_value is None:
-                raise TypeError
-            filter_search = {cls.COMMON_GROUP_KEY: group_key_value}
-        except (AttributeError, TypeError):
-            return None
-
-        return (
-            MessageDocument(md["_id"])
-            for md in db.NewMessagesCollection.get_documents_by_filter(filter_search)
-        )
 
 
 class PhotoContentStrategy(_DownloadableContentStrategy):

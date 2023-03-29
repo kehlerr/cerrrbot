@@ -14,6 +14,7 @@ from common import AppResult
 from settings import TIMEOUT_BEFORE_PERFORMING_DEFAULT_ACTION
 
 from .common import MessageAction, MessageActions, SVM_MsgdocInfo
+from .constants import COMMON_GROUP_KEY
 from .message_document import MessageDocument
 from .message_parser import MessageParser
 
@@ -23,11 +24,9 @@ logger = logging.getLogger("cerrrbot")
 class ContentStrategyBase:
     DEFAULT_MESSAGE_TTL = TIMEOUT_BEFORE_PERFORMING_DEFAULT_ACTION
     DEFAULT_ACTION = MessageActions.DELETE_1
-    COMMON_GROUP_KEY = "media_group_id"
 
     POSSIBLE_ACTIONS = {
         MessageActions.SAVE,
-        MessageActions.NOTE,
         MessageActions.DELETE_REQUEST,
     }
 
@@ -57,21 +56,17 @@ class ContentStrategyBase:
     def _prepare_message_info(cls, message_data: Dict[str, Any]) -> SVM_MsgdocInfo:
         message_info = SVM_MsgdocInfo(
             action=cls.DEFAULT_ACTION,
-            entities=message_data.get("caption_entities")
-            or message_data.get("entities", []),
         )
-        common_group_id = message_data.get(cls.COMMON_GROUP_KEY)
+        common_group_id = message_data.get(COMMON_GROUP_KEY)
         if not common_group_id or not db.NewMessagesCollection.exists_document_in_group(
-            cls.COMMON_GROUP_KEY, common_group_id
+            COMMON_GROUP_KEY, common_group_id
         ):
             message_info.actions = {action.code: {} for action in cls.POSSIBLE_ACTIONS}
-            cls._parse_message(message_data, message_info)
         return message_info
 
     @classmethod
     def _prepare_reply_info(
-        cls, message_info: SVM_MsgdocInfo,
-        result_data: Dict[str, Any]
+        cls, message_info: SVM_MsgdocInfo, result_data: Dict[str, Any]
     ) -> None:
         reply_info = result_data.get("reply_info", message_info)
         if not reply_info.actions:
@@ -82,9 +77,7 @@ class ContentStrategyBase:
             action = MessageActions.ACTION_BY_CODE[action_code]
             additional_caption = action_data.get("additional_caption")
             if additional_caption:
-                action = replace(
-                    action, caption=f"{action.caption}{additional_caption}"
-                )
+                action = replace(action, caption=f"{action.caption}{additional_caption}")
             reply_actions.append(action)
         reply_info.actions = sorted(reply_actions)
 
