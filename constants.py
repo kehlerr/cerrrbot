@@ -2,6 +2,7 @@ from enum import Enum
 
 from aiogram.filters.callback_data import CallbackData
 
+from settings import DEFAULT_CHECK_FOR_NEW_TASKS_TIMEOUT
 
 class Action(str, Enum):
     cancel = "CANCEL"
@@ -18,4 +19,4 @@ class UserAction(CallbackData, prefix="user"):
 DEFAULT_PAGE_LIMIT = 30
 DEFAULT_TIMEOUT_TO_DELETE_MESSAGES = 15
 
-CHECK_FOR_NEW_TASKS_TIMEOUT = 5
+CHECK_FOR_NEW_TASKS_TIMEOUT = DEFAULT_CHECK_FOR_NEW_TASKS_TIMEOUT

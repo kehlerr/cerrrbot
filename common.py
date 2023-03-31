@@ -4,7 +4,7 @@ import os
 from dataclasses import dataclass, field
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Union
 
-from aiogram import BaseMiddleware
+from aiogram import BaseMiddleware, Bot
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 
@@ -148,3 +148,12 @@ def create_directory(directory_name: str) -> AppResult:
 
 def get_directory_path(directory_path: str) -> os.PathLike:
     return os.path.join(DATA_DIRECTORY_ROOT, directory_path)
+
+
+async def create_periodic(loop, *args) -> None:
+    loop.create_task(scheduled(*args))
+
+async def scheduled(bot: Bot, method: Callable, wait_for: int):
+    while True:
+        await method(bot)
+        await asyncio.sleep(wait_for)

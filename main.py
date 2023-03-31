@@ -12,7 +12,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 import db_utils
 import savmes
 from commands_pass import pass_form_router
-from common import CheckUserMiddleware, navigate_content
+from common import CheckUserMiddleware, navigate_content, create_periodic
 from constants import CHECK_FOR_NEW_TASKS_TIMEOUT, Action, UserAction
 from keyboards import Keyboards as kbs
 from settings import TOKEN
@@ -89,10 +89,8 @@ def main_menu_kb() -> types.InlineKeyboardMarkup:
     return kb_builder.as_markup()
 
 
-async def scheduled(bot: Bot, wait_for: int = CHECK_FOR_NEW_TASKS_TIMEOUT):
-    while True:
-        await asyncio.sleep(wait_for)
-        await savmes.check_actions_on_new_messages(bot)
+async def create_periodic_tasks(event_loop, bot: Bot) -> None:
+    await create_periodic(event_loop, bot, savmes.check_actions_on_new_messages, CHECK_FOR_NEW_TASKS_TIMEOUT)
 
 
 async def main():
@@ -107,7 +105,7 @@ async def main():
     bot = Bot(token=TOKEN)
 
     loop = asyncio.get_event_loop()
-    loop.create_task(scheduled(bot))
+    await create_periodic_tasks(loop, bot)
 
     main_router.include_router(pass_form_router)
     main_router.include_router(savmes.router)

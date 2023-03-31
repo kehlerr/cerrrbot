@@ -1,15 +1,9 @@
 import logging
-import os
-import sys
 from datetime import datetime
 from typing import Optional
 
 from aiogram import Bot
 from aiogram.types import Message
-
-current = os.path.dirname(os.path.realpath(__file__))
-parent = os.path.dirname(current)
-sys.path.append(parent)
 
 import db_utils as db
 from common import AppResult
