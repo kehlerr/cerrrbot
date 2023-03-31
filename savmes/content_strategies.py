@@ -112,17 +112,11 @@ class ContentStrategy(ContentStrategyBase):
         if not del_result:
             return del_result
 
-        del_reply_message_result = await cls.delete_reply_message(msgdoc, bot)
-        if not del_reply_message_result:
-            return del_reply_message_result
+        result = await cls.delete_reply_message(msgdoc, bot)
+        if not result:
+            return result
 
-        result = msgdoc.add_to_collection()
-        if result:
-            result = cls._update_actions(
-                msgdoc,
-                (MessageActions.KEEP, MessageActions.DELETE_REQUEST),
-                {MessageActions.DELETE_FROM_CHAT: None},
-            )
+        result.merge(msgdoc.add_to_collection())
         return result
 
     @classmethod
@@ -165,21 +159,22 @@ class ContentStrategy(ContentStrategyBase):
             return AppResult()
 
         try:
-            result = await bot.delete_message(
-                msgdoc.chat.id, message_id
-            )
+            result = await bot.delete_message(msgdoc.chat.id, message_id)
+            result = AppResult(result)
         except AttributeError:
-            result = True
             logger.info(
                 "[{}] Not found action message, no need to delete it".format(msgdoc._id)
             )
+            result = AppResult()
         except Exception as exc:
             logger.error(exc)
-            result = AppResult(False, str(exc))
+            return AppResult(False, str(exc))
 
         if msgdoc.collection:
-            result = msgdoc.update_message_info(None, reply_action_message_id=0)
+            result_ = msgdoc.update_message_info(None, new_actions={}, reply_action_message_id=0)
+            result.merge(result_)
 
+        result.data.update({"reply_info": SVM_ReplyInfo(actions={})})
         return result
 
     @classmethod
