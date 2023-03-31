@@ -1,15 +1,10 @@
 import logging
 import os
 import re
-import sys
 from typing import Dict, List
 
 import requests
 from celery import Task
-
-current = os.path.dirname(os.path.realpath(__file__))
-parent = os.path.dirname(current)
-sys.path.append(parent)
 
 from common import AppResult, create_directory
 from trilium_helper import add_bookmark_urls, add_note

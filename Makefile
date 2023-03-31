@@ -1,5 +1,5 @@
-SHELL=./make-venv
-rundev:
+SHELL=./activate
+run:
 	./main.py
 
 deploy:
