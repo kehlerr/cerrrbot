@@ -1,14 +1,9 @@
 import logging
-import os
-import sys
 from dataclasses import replace
 from typing import Any, Dict, List, Optional
 
 from aiogram.types import Message
 
-current = os.path.dirname(os.path.realpath(__file__))
-parent = os.path.dirname(current)
-sys.path.append(parent)
 import db_utils as db
 from common import AppResult
 from settings import TIMEOUT_BEFORE_PERFORMING_DEFAULT_ACTION
@@ -26,7 +21,7 @@ class ContentStrategyBase:
     DEFAULT_ACTION = MessageActions.DELETE_1
 
     POSSIBLE_ACTIONS = {
-        MessageActions.SAVE,
+        MessageActions.KEEP,
         MessageActions.DELETE_REQUEST,
     }
 

@@ -1,16 +1,10 @@
 import logging
-import os
-import sys
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 from aiogram import Bot
 from aiogram.types import ContentType
 from celery import signature, states
 from celery.result import AsyncResult as CeleryTaskResult
-
-current = os.path.dirname(os.path.realpath(__file__))
-parent = os.path.dirname(current)
-sys.path.append(parent)
 
 from common import AppResult, create_directory
 from tasks import app
@@ -113,16 +107,20 @@ class ContentStrategy(ContentStrategyBase):
         return result
 
     @classmethod
-    async def save(cls, msgdoc: MessageDocument, bot: Bot) -> AppResult:
+    async def keep(cls, msgdoc: MessageDocument, bot: Bot) -> AppResult:
         del_result = msgdoc.delete()
         if not del_result:
             return del_result
+
+        del_reply_message_result = await cls.delete_reply_message(msgdoc, bot)
+        if not del_reply_message_result:
+            return del_reply_message_result
 
         result = msgdoc.add_to_collection()
         if result:
             result = cls._update_actions(
                 msgdoc,
-                (MessageActions.SAVE, MessageActions.DELETE_REQUEST),
+                (MessageActions.KEEP, MessageActions.DELETE_REQUEST),
                 {MessageActions.DELETE_FROM_CHAT: None},
             )
         return result
@@ -148,13 +146,30 @@ class ContentStrategy(ContentStrategyBase):
 
     @classmethod
     async def delete_from_chat(cls, msgdoc: MessageDocument, bot: Bot) -> AppResult:
-        result = AppResult()
+        result = await cls.delete_reply_message(msgdoc, bot)
+        try:
+            result_ = await bot.delete_message(msgdoc.chat.id, msgdoc.message_id)
+            result_ = AppResult()
+        except Exception as exc:
+            logger.error(exc)
+            result_ = AppResult(False, str(exc))
+
+        result.merge(result_)
+        result.data.update({"reply_info": SVM_ReplyInfo()})
+        return result
+
+    @classmethod
+    async def delete_reply_message(cls, msgdoc: MessageDocument, bot: Bot) -> AppResult:
+        message_id = msgdoc.cb_message_info.reply_action_message_id
+        if not message_id:
+            return AppResult()
+
         try:
             result = await bot.delete_message(
-                msgdoc.chat.id, msgdoc.cb_message_info.reply_action_message_id
+                msgdoc.chat.id, message_id
             )
-            result = AppResult(result)
         except AttributeError:
+            result = True
             logger.info(
                 "[{}] Not found action message, no need to delete it".format(msgdoc._id)
             )
@@ -162,14 +177,9 @@ class ContentStrategy(ContentStrategyBase):
             logger.error(exc)
             result = AppResult(False, str(exc))
 
-        try:
-            result_ = await bot.delete_message(msgdoc.chat.id, msgdoc.message_id)
-        except Exception as exc:
-            logger.error(exc)
-            result_ = AppResult(False, str(exc))
+        if msgdoc.collection:
+            result = msgdoc.update_message_info(None, reply_action_message_id=0)
 
-        result.merge(result_)
-        result.data.update({"reply_info": SVM_ReplyInfo()})
         return result
 
     @classmethod

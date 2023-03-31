@@ -1,15 +1,11 @@
 import logging
 import os
 import re
-import sys
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
 from aiogram import Bot
 
-current = os.path.dirname(os.path.realpath(__file__))
-parent = os.path.dirname(current)
-sys.path.append(parent)
 from common import AppResult
 from settings import (
     DATA_DIRECTORY_ROOT,
@@ -41,7 +37,7 @@ class MessageAction:
 class MESSAGE_ACTIONS:
     NONE = MessageAction("NONE", "None", 0, "none")
     DELETE_REQUEST = MessageAction("DEL", "Delete", 0, "delete_request")
-    SAVE = MessageAction("SAVE", "Save", 1, "save")
+    KEEP = MessageAction("KEEP", "Keep", 1, "keep")
     DOWNLOAD_FILE = MessageAction("DL", "Download", 2, "download")
     DOWNLOAD_ALL = MessageAction("DLAL", "Download all", 3, "download_all")
     DOWNLOAD_DELAY = MessageAction("DLDE", "Download delay", 3, "download_delay")
@@ -61,7 +57,7 @@ class MESSAGE_ACTIONS:
     ALL = (
         NONE,
         DELETE_REQUEST,
-        SAVE,
+        KEEP,
         DOWNLOAD_FILE,
         DOWNLOAD_ALL,
         DOWNLOAD_ALL,
@@ -165,7 +161,7 @@ MessageActions = MESSAGE_ACTIONS(CustomMessageActions.ALL)
 class SVM_MsgdocInfo:
     action: str = MessageActions.DELETE_NOW
     perform_action_at: int = 0
-    reply_action_message_id: int = 0
+    reply_action_message_id: Optional[int] = 0
     entities: Optional[List[Dict[str, Any]]] = None
     actions: Dict[str, Any] = field(default_factory=lambda: {})
 

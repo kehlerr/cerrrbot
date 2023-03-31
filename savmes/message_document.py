@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import logging
-import os
-import sys
 from dataclasses import asdict
 from datetime import datetime
 from typing import Any, Dict, Optional, Sequence, Tuple
@@ -10,9 +8,6 @@ from typing import Any, Dict, Optional, Sequence, Tuple
 from aiogram.types import Message
 from dacite import from_dict
 
-current = os.path.dirname(os.path.realpath(__file__))
-parent = os.path.dirname(current)
-sys.path.append(parent)
 import db_utils as db
 from common import AppResult
 
@@ -111,7 +106,10 @@ class MessageDocument(Message):
             self.cb_message_info.entities = entities
 
         if reply_action_message_id is not None:
-            self.cb_message_info.reply_action_message_id = reply_action_message_id
+            if reply_action_message_id == 0:
+                self.cb_message_info.reply_action_message_id = None
+            else:
+                self.cb_message_info.reply_action_message_id = reply_action_message_id
 
         updated_message_info = self._get_dumped_message_info()
         return self.collection.update_document(
