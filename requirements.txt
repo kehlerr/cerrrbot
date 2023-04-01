@@ -7,4 +7,4 @@ celery==5.2.7
 Redis==4.5.4
 requests==2.28.2
 trilium-py==0.7.1
-pylibmagic==0.2.2
+pyaml==21.10.1

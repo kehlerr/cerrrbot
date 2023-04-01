@@ -8,7 +8,8 @@ import db_utils as db
 from common import AppResult
 from settings import TIMEOUT_BEFORE_PERFORMING_DEFAULT_ACTION
 
-from .common import MessageAction, MessageActions, SVM_MsgdocInfo
+from .actions import MessageAction, MessageActions
+from .common import SVM_MsgdocInfo
 from .constants import COMMON_GROUP_KEY
 from .message_document import MessageDocument
 from .message_parser import MessageParser
@@ -57,6 +58,7 @@ class ContentStrategyBase:
             COMMON_GROUP_KEY, common_group_id
         ):
             message_info.actions = {action.code: {} for action in cls.POSSIBLE_ACTIONS}
+        cls._parse_message(message_data, message_info)
         return message_info
 
     @classmethod

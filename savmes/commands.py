@@ -11,8 +11,8 @@ from aiogram.types import (
 )
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
+from .actions import MessageAction, MessageActions
 from .api import add_new_message, perform_message_action
-from .common import MessageAction, MessageActions
 from .constants import CUSTOM_MESSAGE_MIN_ORDER
 from .message_document import MessageDocument
 

@@ -1,10 +1,17 @@
-from .common import MessageActions, SVM_MsgdocInfo
+from .actions import MessageActions
+from .common import SVM_MsgdocInfo
 
 
 class MessageParser:
     def __init__(self, message_text: str, message_info: SVM_MsgdocInfo):
         self._message_text = message_text
         self.actions = {}
+        self._links = []
+        self._init_links(message_info)
+
+    def _init_links(self, message_info: SVM_MsgdocInfo) -> None:
+        if not message_info.entities:
+            return
         self._links = [
             e["url"] for e in message_info.entities if e["type"] == "text_link"
         ]

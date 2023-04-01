@@ -1,3 +1,5 @@
+import os
+
 from decouple import config
 
 DEBUG = config("CERRRBOT_DEBUG", default=False, cast=bool)
@@ -47,3 +49,5 @@ DEFAULT_CHECK_FOR_NEW_TASKS_TIMEOUT = config(
     "DEFAULT_CHECK_FOR_NEW_TASKS_TIMEOUT",
     default=5, cast=int
 )
+
+ACTIONS_CONFIG_PATH = os.path.join("plugins", "actions_config.yml")

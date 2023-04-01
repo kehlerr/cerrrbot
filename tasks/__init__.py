@@ -1,8 +1,23 @@
-from celery import Celery
+from importlib import import_module
+from celery import Celery, Task
 
+from common import get_actions_config
 from settings import REDIS_HOST, REDIS_PORT, REDIS_BROKER_DB_IDX, REDIS_BACKEND_DB_IDX
 
-from .savmes_tasks import SavmesTask, TelegraphScrapeTask, TriliumBookmark, TriliumNote
+
+def register_tasks(app: Celery) -> None:
+    loaded_modules = {}
+    for action_cfg in get_actions_config():
+        module_name = action_cfg["module"]
+        loaded_modules.setdefault(module_name, import_module(module_name))
+        task_cls = getattr(loaded_modules[module_name], action_cfg["task_cls"])
+        app.register_task(task_cls)
+
+
+class TestTask(Task):
+    def run(self, data, msgdoc):
+        print(data)
+        return data
 
 app = Celery(
     "tasks",
@@ -10,7 +25,4 @@ app = Celery(
     backend=f"redis://{REDIS_HOST}:{REDIS_PORT}/{REDIS_BACKEND_DB_IDX}"
 )
 
-app.register_task(SavmesTask)
-app.register_task(TelegraphScrapeTask)
-app.register_task(TriliumNote)
-app.register_task(TriliumBookmark)
+register_tasks(app)

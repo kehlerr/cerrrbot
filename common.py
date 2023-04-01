@@ -4,6 +4,7 @@ import os
 from dataclasses import dataclass, field
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Union
 
+import yaml
 from aiogram import BaseMiddleware, Bot
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
@@ -15,7 +16,7 @@ from constants import (
     UserAction,
 )
 from keyboards import Keyboards as kbs
-from settings import ALLOWED_USERS, DATA_DIRECTORY_ROOT
+from settings import ACTIONS_CONFIG_PATH, ALLOWED_USERS, DATA_DIRECTORY_ROOT
 
 logger = logging.getLogger("cerrrbot")
 
@@ -157,3 +158,8 @@ async def scheduled(bot: Bot, method: Callable, wait_for: int):
     while True:
         await method(bot)
         await asyncio.sleep(wait_for)
+
+
+def get_actions_config() -> Dict[str, Any]:
+    with open(ACTIONS_CONFIG_PATH, "r") as fp:
+        return yaml.safe_load(fp)

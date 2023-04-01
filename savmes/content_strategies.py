@@ -9,13 +9,8 @@ from celery.result import AsyncResult as CeleryTaskResult
 from common import AppResult, create_directory
 from tasks import app
 
-from .common import (
-    CustomMessageAction,
-    MessageActions,
-    SVM_MsgdocInfo,
-    SVM_ReplyInfo,
-    save_file,
-)
+from .actions import CustomMessageAction, MessageActions
+from .common import SVM_MsgdocInfo, SVM_ReplyInfo, save_file
 from .constants import COMMON_GROUP_KEY
 from .content_strategy_base import ContentStrategyBase
 from .message_document import MessageDocument
@@ -46,9 +41,7 @@ class ContentStrategy(ContentStrategyBase):
         return result
 
     @classmethod
-    async def custom_task(
-        cls, msgdoc: MessageDocument, bot: Bot, *args, **task_info
-    ) -> AppResult:
+    async def custom_task(cls, msgdoc: MessageDocument, *args, **task_info) -> AppResult:
         action_code = task_info["code"]
         action = MessageActions.ACTION_BY_CODE[action_code]
         action_data = msgdoc.cb_message_info.actions[action_code]
@@ -62,13 +55,12 @@ class ContentStrategy(ContentStrategyBase):
     @classmethod
     def _create_task(
         cls,
-        task_info: str,
+        task_info: Dict[str, Any],
         task_args: Dict[str, Any],
         action: CustomMessageAction,
         msgdoc: MessageDocument,
     ) -> AppResult:
-        task_name = task_info["task_name"]
-        task_signature = signature(f"tasks.savmes_tasks.{task_name}")
+        task_signature = signature(task_info["task_name"])
         if task_info.get("is_instant", False):
             task_signature(task_args, msgdoc)
             return cls._update_actions(msgdoc, (action,))

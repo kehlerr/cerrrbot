@@ -1,0 +1,28 @@
+---
+- module: plugins.telegraph
+  task_cls: TelegraphScrapeTask
+  def:
+    code: TGPH_DL
+    caption: Download Telegraph
+    order: 600
+    args:
+      regex: '(?P<url>https?:\/\/(www\.)?telegra.ph\/([a-zA-Z0-9-_]+)\/?)'
+- module: plugins.trilium.tasks
+  task_cls: TriliumNote
+  def:
+    code: CST_NOTE
+    caption: Note
+    order: 500
+    args:
+      regex: "*"
+      is_instant: true
+- module: plugins.trilium.tasks
+  task_cls: TriliumBookmark
+  def:
+    code: CST_BOOKMARK
+    caption: Bookmark
+    order: 501
+    args:
+      regex: '^https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&\/=]*)$'
+      is_instant: true
+      parse_text_links: true

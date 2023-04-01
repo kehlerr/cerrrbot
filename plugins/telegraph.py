@@ -1,4 +1,3 @@
-import logging
 import os
 import re
 from typing import Dict, List
@@ -7,26 +6,15 @@ import requests
 from celery import Task
 
 from common import AppResult, create_directory
-from trilium_helper import add_bookmark_urls, add_note
-
-logger = logging.getLogger("cerrrbot")
-
-
-class SavmesTask(Task):
-    def run(self, data):
-        print(data)
-        return data
 
 
 class TelegraphScrapeTask(Task):
-    def run(self, links: List[Dict[str, str]]) -> AppResult:
+    def run(self, links: List[Dict[str, str]], *args) -> AppResult:
         result = AppResult()
-
         for link_data in links:
             downloader = TelegraphDownloader(link_data["url"])
-            result_ = downloader.download()
-            result.merge(result_)
-
+            downloader.download()
+            result.merge(downloader.status)
         return result
 
 
@@ -76,9 +64,10 @@ class TelegraphDownloader:
     def _setup_media_data(self) -> None:
         media_data = []
         for url in self._media_data:
-            _url = f"{self.SCHEME}://{self._host}{url}"
+            if not url.startswith("http"):
+                continue
             file_name = url.split("/")[-1]
-            media_data.append((_url, file_name))
+            media_data.append((url, file_name))
 
         self._media_data = media_data
 
@@ -108,17 +97,3 @@ class TelegraphDownloader:
             fd.write(response.content)
 
         return AppResult()
-
-
-class TriliumNote(Task):
-    def run(self, _, msgdoc) -> AppResult:
-        forward_from_id, title = msgdoc.get_from_chat_data()
-        if not forward_from_id:
-            forward_from_id, title = msgdoc.get_from_user_data()
-
-        return AppResult(add_note(msgdoc.message_text, forward_from_id, title))
-
-
-class TriliumBookmark(Task):
-    def run(self, links, msgdoc) -> AppResult:
-        return AppResult(add_bookmark_urls(msgdoc.message_text, links))

@@ -4,6 +4,7 @@ from aiogram.filters.callback_data import CallbackData
 
 from settings import DEFAULT_CHECK_FOR_NEW_TASKS_TIMEOUT
 
+
 class Action(str, Enum):
     cancel = "CANCEL"
     nav_prev = "NAV_PREV"

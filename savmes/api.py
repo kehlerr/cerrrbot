@@ -8,7 +8,7 @@ from aiogram.types import Message
 import db_utils as db
 from common import AppResult
 
-from .common import MessageActions
+from .actions import MessageActions
 from .content_strategies import ContentStrategy, cls_strategy_by_content_type
 from .message_document import MessageDocument
 

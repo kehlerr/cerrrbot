@@ -11,7 +11,8 @@ from dacite import from_dict
 import db_utils as db
 from common import AppResult
 
-from .common import MessageAction, MessageActions, SVM_MsgdocInfo
+from .actions import MessageAction, MessageActions
+from .common import SVM_MsgdocInfo
 from .constants import COMMON_GROUP_KEY
 
 logger = logging.getLogger("cerrrbot")
