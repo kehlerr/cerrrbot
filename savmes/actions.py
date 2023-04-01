@@ -3,7 +3,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any, Dict, List
 
-from common import get_actions_config, get_urls_data
+from common import get_actions_config
 from settings import DELETE_TIMEOUT_1, DELETE_TIMEOUT_2, DELETE_TIMEOUT_3
 
 from .constants import CUSTOM_MESSAGE_MIN_ORDER
@@ -86,30 +86,13 @@ class CustomMessageAction(MessageAction):
         if self.method_args.get("parse_text_links"):
             parsed_data = list(links)
 
-        if self.method_args.get("parse_raw_urls"):
-            parsed_data.extend(self._parse_urls(text))
-
         regex_pattern = self.method_args.get("regex")
-        if regex_pattern:
-            parsed_data.extend(self._parse_by_regex(regex_pattern, text))
-        return parsed_data
+        if not regex_pattern:
+            return parsed_data
+        elif regex_pattern == "*":
+            parsed_data.append(text)
+            return parsed_data
 
-    def _parse_urls(self, text: str) -> List[str]:
-        urls_data = get_urls_data(text)
-        allowed_hosts = self.method_args.get("hosts", [])
-
-        parsed_data = []
-        for host, urls in urls_data.items():
-            if not allowed_hosts or host in allowed_hosts:
-                parsed_data.extend(urls)
-
-        return parsed_data
-
-    def _parse_by_regex(self, regex_pattern: str, text: str) -> List[str]:
-        if regex_pattern == "*":
-            return [text]
-
-        parsed_data = []
         regex = re.compile(regex_pattern, re.IGNORECASE)
         for data in regex.finditer(text):
             parsed = data.groupdict()

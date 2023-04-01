@@ -168,15 +168,3 @@ async def scheduled(bot: Bot, method: Callable, wait_for: int):
 def get_actions_config() -> Dict[str, Any]:
     with open(ACTIONS_CONFIG_PATH, "r") as fp:
         return yaml.safe_load(fp)
-
-
-def get_urls_data(source_txt: str) -> Dict[str, List[str]]:
-    extractor = URLExtract()
-    urls = extractor.find_urls(source_txt)
-    urls_data = {}
-    for url in urls:
-        hostname = urlparse(url).hostname
-        if hostname.startswith("www."):
-            hostname = hostname[4:]
-        urls_data.setdefault(hostname, []).append(url)
-    return urls_data
