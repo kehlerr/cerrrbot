@@ -8,3 +8,4 @@ Redis==4.5.4
 requests==2.28.2
 trilium-py==0.7.1
 pyaml==21.10.1
+yt_dlp==2023.3.4

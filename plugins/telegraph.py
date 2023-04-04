@@ -1,3 +1,4 @@
+import logging
 import os
 import re
 from typing import Dict, List
@@ -6,6 +7,8 @@ import requests
 from celery import Task
 
 from common import AppResult, create_directory
+
+logger = logging.getLogger("cerrrbot")
 
 
 class TelegraphScrapeTask(Task):

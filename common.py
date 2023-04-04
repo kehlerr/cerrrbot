@@ -40,6 +40,9 @@ class AppResult:
     def __getattr__(self, __name: str) -> Any:
         return self.data[__name]
 
+    def __json__(self):
+        return self.data
+
     def __str__(self) -> str:
         _str = f"Result:{self.status}; {self.info}"
         if self._info:

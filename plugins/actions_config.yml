@@ -26,3 +26,13 @@
       regex: '^https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&\/=]*)$'
       is_instant: true
       parse_text_links: true
+- module: plugins.yt_dlp
+  task_cls: YTDownloadTask
+  def:
+    code: YT_DL
+    caption: '[YT] Download'
+    order: 501
+    args:
+      regex: '(?P<url>https?:\/\/(www\.)?youtube.com\/([a-zA-Z0-9-_]+)\/?.+=[A-Za-z0-9_]+)'
+      parse_text_links: true
+
