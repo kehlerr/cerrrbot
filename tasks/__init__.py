@@ -1,9 +1,13 @@
 from celery import Celery
 
+from settings import REDIS_HOST, REDIS_PORT, REDIS_BROKER_DB_IDX, REDIS_BACKEND_DB_IDX
+
 from .savmes_tasks import SavmesTask, TelegraphScrapeTask, TriliumBookmark, TriliumNote
 
 app = Celery(
-    "tasks", broker="redis://localhost:6666/0", backend="redis://localhost:6666/1"
+    "tasks",
+    broker=f"redis://{REDIS_HOST}:{REDIS_PORT}/{REDIS_BROKER_DB_IDX}",
+    backend=f"redis://{REDIS_HOST}:{REDIS_PORT}/{REDIS_BACKEND_DB_IDX}"
 )
 
 app.register_task(SavmesTask)

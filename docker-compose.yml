@@ -4,6 +4,8 @@ services:
 
     bot:
         build: .
+        image: cerrrbot.image
+        container_name: cerrrbot_app_container
         command: bash -c "python main.py"
         depends_on:
             - mongo_db
@@ -14,20 +16,23 @@ services:
         environment:
             - DATA_DIRECTORY_ROOT=/home/data/
         restart: on-failure:15
-        ports:
-            - "8080:8080"
 
     mongo_db:
-        image: mongo:latest
+        image: mongo:4.4.18
         volumes:
-            - ~/.local/share/cerrrbot/data_mongo/:/data/db/
+            - ~/.local/share/cerrrbot_data/db_data2/:/data/db/
+        ports:
+            - "6341:6341"
 
     redis_db:
         image: redis:latest
+        command: --port 6667
         ports:
-            - "6666:6379"
+            - "6667:6667"
 
     celery:
         build: .
         image: cerrrbot_savmes_tasks_worker
-        command: bash -c "celery -A tasks.app worker --loglevel=INFO"
+        command: bash -c "celery -A tasks worker --loglevel=INFO"
+        links:
+            - redis_db

@@ -2,5 +2,5 @@
 logs/*
 .DS_Store
 *.log*
-__pycache__/*
+**/__pycache__/*
 .env
