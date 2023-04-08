@@ -4,6 +4,6 @@ EXCLUDE_MESSAGE_FIELDS = {
 }
 
 
-CUSTOM_MESSAGE_MIN_ORDER = 500
+CUSTOM_MESSAGE_MIN_ORDER: int = 500
 
-COMMON_GROUP_KEY = "media_group_id"
+COMMON_GROUP_KEY: str = "media_group_id"

@@ -12,7 +12,7 @@
   def:
     code: CST_NOTE
     caption: Note
-    order: 500
+    order: 501
     args:
       regex: "*"
       is_instant: true
@@ -31,8 +31,9 @@
   def:
     code: YT_DL
     caption: '[YT] Download'
-    order: 501
+    order: 600
     args:
-      regex: '(?P<url>https?:\/\/(www\.)?youtube.com\/([a-zA-Z0-9-_]+)\/?.+=[A-Za-z0-9_]+)'
-      parse_text_links: true
+      parse_raw_urls: true
+      hosts:
+        - 'youtube.com'
 

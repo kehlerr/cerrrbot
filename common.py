@@ -3,11 +3,13 @@ import logging
 import os
 from dataclasses import dataclass, field
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Union
+from urllib.parse import urlparse
 
 import yaml
 from aiogram import BaseMiddleware, Bot
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
+from urlextract import URLExtract
 
 from constants import (
     DEFAULT_PAGE_LIMIT,
@@ -166,3 +168,15 @@ async def scheduled(bot: Bot, method: Callable, wait_for: int):
 def get_actions_config() -> Dict[str, Any]:
     with open(ACTIONS_CONFIG_PATH, "r") as fp:
         return yaml.safe_load(fp)
+
+
+def get_urls_data(source_txt: str) -> Dict[str, List[str]]:
+    extractor = URLExtract()
+    urls = extractor.find_urls(source_txt)
+    urls_data = {}
+    for url in urls:
+        hostname = urlparse(url).hostname
+        if hostname.startswith("www."):
+            hostname = hostname[4:]
+        urls_data.setdefault(hostname, []).append(url)
+    return urls_data
