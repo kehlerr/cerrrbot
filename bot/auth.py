@@ -3,7 +3,6 @@ from datetime import datetime
 from typing import Optional
 
 import pyotp
-
 from common import AppResult
 from settings import OTP_SECRET_KEY
 

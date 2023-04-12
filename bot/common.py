@@ -9,8 +9,6 @@ import yaml
 from aiogram import BaseMiddleware, Bot
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
-from urlextract import URLExtract
-
 from constants import (
     DEFAULT_PAGE_LIMIT,
     DEFAULT_TIMEOUT_TO_DELETE_MESSAGES,

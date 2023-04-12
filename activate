@@ -1,6 +1,6 @@
 #!/bin/bash
 if [ -d .venv ]; then
     source ./.venv/bin/activate
-    export PYTHONPATH="$(pwd)"
+    export PYTHONPATH="$(pwd)/bot"
 fi
 $2

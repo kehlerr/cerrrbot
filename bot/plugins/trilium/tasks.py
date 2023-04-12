@@ -1,5 +1,4 @@
 from celery import Task
-
 from common import AppResult
 
 from .helper import add_bookmark_urls, add_note

@@ -21,4 +21,5 @@ COPY --from=python_img /home/cerrrbot/requirements.txt .
 
 RUN pip3 install --no-cache /wheels/*
 
-COPY . .
+COPY bot/ .
+COPY .env .

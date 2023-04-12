@@ -2,9 +2,8 @@ import logging
 from dataclasses import replace
 from typing import Any, Dict, List, Optional
 
-from aiogram.types import Message
-
 import db_utils as db
+from aiogram.types import Message
 from common import AppResult
 from settings import TIMEOUT_BEFORE_PERFORMING_DEFAULT_ACTION
 

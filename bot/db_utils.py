@@ -4,9 +4,8 @@ from typing import Any, Dict, List, Optional
 import bson
 import pymongo
 from bson.objectid import ObjectId
-from pymongo.errors import ServerSelectionTimeoutError
-
 from common import AppResult
+from pymongo.errors import ServerSelectionTimeoutError
 from settings import MONGO_DB_HOST, MONGO_DB_NAME, MONGO_DB_PORT
 
 logger = logging.getLogger(__name__)

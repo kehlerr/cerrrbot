@@ -4,7 +4,6 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
 from aiogram import Bot
-
 from common import AppResult
 from settings import DATA_DIRECTORY_ROOT
 

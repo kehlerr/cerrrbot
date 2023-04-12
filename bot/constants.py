@@ -1,7 +1,6 @@
 from enum import Enum
 
 from aiogram.filters.callback_data import CallbackData
-
 from settings import DEFAULT_CHECK_FOR_NEW_TASKS_TIMEOUT
 
 

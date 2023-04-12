@@ -2,8 +2,6 @@ import re
 from typing import List
 
 import requests
-from trilium_py.client import ETAPI
-
 from settings import (
     TRILIUM_NOTE_ID_BOOK_NOTES_ALL,
     TRILIUM_NOTE_ID_BOOK_ROOT,
@@ -11,6 +9,7 @@ from settings import (
     TRILIUM_TOKEN,
     TRILIUM_URL,
 )
+from trilium_py.client import ETAPI
 
 trilium_client = ETAPI(TRILIUM_URL, TRILIUM_TOKEN)
 

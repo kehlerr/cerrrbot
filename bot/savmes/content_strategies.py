@@ -5,7 +5,6 @@ from aiogram import Bot
 from aiogram.types import ContentType
 from celery import signature, states
 from celery.result import AsyncResult as CeleryTaskResult
-
 from common import AppResult, create_directory
 from tasks import app
 

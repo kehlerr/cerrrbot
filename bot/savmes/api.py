@@ -2,10 +2,9 @@ import logging
 from datetime import datetime
 from typing import Optional
 
+import db_utils as db
 from aiogram import Bot
 from aiogram.types import Message
-
-import db_utils as db
 from common import AppResult
 
 from .actions import MessageActions

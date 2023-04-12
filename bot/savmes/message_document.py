@@ -5,11 +5,10 @@ from dataclasses import asdict
 from datetime import datetime
 from typing import Any, Dict, Optional, Sequence, Tuple
 
-from aiogram.types import Message
-from dacite import from_dict
-
 import db_utils as db
+from aiogram.types import Message
 from common import AppResult
+from dacite import from_dict
 
 from .actions import MessageAction, MessageActions
 from .common import SVM_MsgdocInfo
@@ -31,7 +30,7 @@ class MessageDocument(Message):
         try:
             cb_message_info = self.cb_message_info
         except AttributeError as exc:
-            logger.error(f"Empty message info: {exc}")
+            logger.warning(f"Empty message info: {exc}")
             cb_message_info = {}
         self.cb_message_info = from_dict(data_class=SVM_MsgdocInfo, data=cb_message_info)
 

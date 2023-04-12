@@ -50,4 +50,6 @@ DEFAULT_CHECK_FOR_NEW_TASKS_TIMEOUT = config(
     default=5, cast=int
 )
 
-ACTIONS_CONFIG_PATH = os.path.join("plugins", "actions_config.yml")
+ACTIONS_CONFIG_PATH = config(
+    "ACTIONS_CONFIG_PATH", default=os.path.join("plugins", "actions_config.yml")
+)

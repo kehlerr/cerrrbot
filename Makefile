@@ -1,6 +1,6 @@
 SHELL=./activate
 run:
-	./main.py
+	python bot/main.py
 
 deploy:
 	docker-compose stop bot

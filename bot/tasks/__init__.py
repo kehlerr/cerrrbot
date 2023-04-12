@@ -1,8 +1,8 @@
 from importlib import import_module
-from celery import Celery, Task
 
+from celery import Celery, Task
 from common import get_actions_config
-from settings import REDIS_HOST, REDIS_PORT, REDIS_BROKER_DB_IDX, REDIS_BACKEND_DB_IDX
+from settings import REDIS_BACKEND_DB_IDX, REDIS_BROKER_DB_IDX, REDIS_HOST, REDIS_PORT
 
 
 def register_tasks(app: Celery) -> None:

@@ -15,6 +15,8 @@ services:
             - ~/.local/share/cerrrbot/data/:/home/data/
         environment:
             - DATA_DIRECTORY_ROOT=/home/data/
+        networks:
+            - cerrrbot-network
         restart: on-failure:15
 
     mongo_db:
@@ -23,16 +25,26 @@ services:
             - ~/.local/share/cerrrbot_data/db_data2/:/data/db/
         ports:
             - "6341:6341"
+        networks:
+            - cerrrbot-network
 
     redis_db:
         image: redis:latest
         command: --port 6667
         ports:
             - "6667:6667"
+        networks:
+            - cerrrbot-network
 
     celery:
         build: .
         image: cerrrbot_savmes_tasks_worker
         command: bash -c "celery -A tasks worker --loglevel=INFO"
+        networks:
+            - cerrrbot-network
         links:
             - redis_db
+
+networks:
+    cerrrbot-network:
+      external: true
