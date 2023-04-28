@@ -188,14 +188,15 @@ class _DownloadableContentStrategy(ContentStrategy):
     file_extension: str
     sort_key: str = "height"
 
-    POSSIBLE_ACTIONS = {MessageActions.DELETE_REQUEST, MessageActions.DOWNLOAD_FILE}
+    DEFAULT_ACTION = MessageActions.DOWNLOAD
+    POSSIBLE_ACTIONS = {MessageActions.DELETE_REQUEST, MessageActions.DOWNLOAD}
 
     @classmethod
     def _prepare_message_info(cls, message_data: Dict[str, Any]) -> SVM_MsgdocInfo:
         message_info = super()._prepare_message_info(message_data)
         message_actions = message_info.actions
         if message_actions and COMMON_GROUP_KEY in message_data:
-            message_actions.pop(MessageActions.DOWNLOAD_FILE.code)
+            message_actions.pop(MessageActions.DOWNLOAD.code)
             message_actions[MessageActions.DOWNLOAD_ALL.code] = {}
         return message_info
 
@@ -214,28 +215,24 @@ class _DownloadableContentStrategy(ContentStrategy):
 
     @classmethod
     async def download(cls, msgdoc: MessageDocument, bot: Bot) -> AppResult:
-        result = await cls._download(msgdoc, bot)
-        if result:
-            result = cls._update_actions(msgdoc, (MessageActions.DOWNLOAD_FILE,))
-        return result
-
-    @classmethod
-    async def download_all(cls, msgdoc: MessageDocument, bot: Bot):
         result = AppResult()
-        for _msgdoc in msgdoc.get_msgdocs_by_group():
-            _cls = cls_strategy_by_content_type[_msgdoc.content_type]
-            _result = await _cls._download(_msgdoc, bot)
-            result.merge(_result)
+        msgdocs = msgdoc.get_msgdocs_by_group()
+        if msgdocs:
+            for _msgdoc in msgdocs:
+               _cls = cls_strategy_by_content_type[_msgdoc.content_type]
+               _result = await _cls._download(_msgdoc, bot)
+               result.merge(_result)
+        else:
+            result = await cls._download(msgdoc, bot)
 
         if result:
-            result = cls._update_actions(msgdoc, (MessageActions.DOWNLOAD_ALL,))
+            result = cls._update_actions(msgdoc, (MessageActions.DOWNLOAD, MessageActions.DOWNLOAD_ALL))
         return result
 
     @classmethod
     async def _download(cls, msgdoc: MessageDocument, bot: Bot) -> AppResult:
         from_user, _ = msgdoc.get_from_user_data()
         from_chat, _ = msgdoc.get_from_chat_data()
-
         result = await cls._download_file_impl(
             getattr(msgdoc, cls.content_type_key),
             bot,
@@ -286,7 +283,7 @@ class _DownloadableContentStrategy(ContentStrategy):
 class PhotoContentStrategy(_DownloadableContentStrategy):
     content_type_key: str = ContentType.PHOTO
     file_extension: str = "jpg"
-    POSSIBLE_ACTIONS = {MessageActions.DOWNLOAD_FILE, MessageActions.DELETE_REQUEST}
+    POSSIBLE_ACTIONS = {MessageActions.DOWNLOAD, MessageActions.DELETE_REQUEST}
 
     @classmethod
     def _best_quality_variant(
@@ -301,7 +298,7 @@ class PhotoContentStrategy(_DownloadableContentStrategy):
 class VideoContentStrategy(_DownloadableContentStrategy):
     content_type_key: str = ContentType.VIDEO
     file_extension: str = "mp4"
-    POSSIBLE_ACTIONS = {MessageActions.DOWNLOAD_FILE, MessageActions.DELETE_REQUEST}
+    POSSIBLE_ACTIONS = {MessageActions.DOWNLOAD, MessageActions.DELETE_REQUEST}
 
 
 class AnimationContentStrategy(_DownloadableContentStrategy):
@@ -328,7 +325,7 @@ class StickerContentStrategy(_DownloadableContentStrategy):
     file_extension: str = "webp"
     content_type_key: str = ContentType.STICKER
     POSSIBLE_ACTIONS = {
-        MessageActions.DOWNLOAD_FILE,
+        MessageActions.DOWNLOAD,
         MessageActions.DOWNLOAD_ALL,
         MessageActions.DELETE_REQUEST,
     }

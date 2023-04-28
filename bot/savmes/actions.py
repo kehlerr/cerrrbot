@@ -28,9 +28,8 @@ class MESSAGE_ACTIONS:
     NONE = MessageAction("NONE", "None", 0, "none")
     DELETE_REQUEST = MessageAction("DEL", "Delete", 0, "delete_request")
     KEEP = MessageAction("KEEP", "Keep", 1, "keep")
-    DOWNLOAD_FILE = MessageAction("DL", "Download", 2, "download")
+    DOWNLOAD = MessageAction("DL", "Download", 2, "download")
     DOWNLOAD_ALL = MessageAction("DLAL", "Download all", 3, "download_all")
-    DOWNLOAD_DELAY = MessageAction("DLDE", "Download delay", 3, "download_delay")
     TODO = MessageAction("NOTO", "ToDo", 5, "note_todo")
     DELETE_FROM_CHAT = MessageAction("DFC", "Delete from chat", 1, "delete_from_chat")
     DELETE_NOW = MessageAction("DELN", "Delete now", 1, "delete")
@@ -48,10 +47,8 @@ class MESSAGE_ACTIONS:
         NONE,
         DELETE_REQUEST,
         KEEP,
-        DOWNLOAD_FILE,
+        DOWNLOAD,
         DOWNLOAD_ALL,
-        DOWNLOAD_ALL,
-        DOWNLOAD_DELAY,
         TODO,
         DELETE_FROM_CHAT,
         DELETE_NOW,
