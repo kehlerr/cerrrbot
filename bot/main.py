@@ -89,7 +89,7 @@ def main_menu_kb() -> types.InlineKeyboardMarkup:
 
 
 async def create_periodic_tasks(event_loop, bot: Bot) -> None:
-    await create_periodic(event_loop, bot, savmes.check_actions_on_new_messages, CHECK_FOR_NEW_TASKS_TIMEOUT)
+    await create_periodic(event_loop, bot, savmes.perform_message_actions, CHECK_FOR_NEW_TASKS_TIMEOUT)
 
 
 async def main():
@@ -97,6 +97,7 @@ async def main():
     db_info = db_utils.check_connection()
     if db_info:
         logger.debug("Got db:{}".format(db_info))
+        db_utils.init_db()
     else:
         logger.error("DB is down")
 

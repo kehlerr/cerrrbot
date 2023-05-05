@@ -140,7 +140,7 @@ class ContentStrategy(ContentStrategyBase):
             result_ = AppResult(False, str(exc))
 
         result.merge(result_)
-        result.data.update({"reply_info": SVM_ReplyInfo()})
+        result.data.update({"reply_info": SVM_ReplyInfo(need_edit_buttons=False)})
         return result
 
     @classmethod
@@ -179,8 +179,8 @@ class ContentStrategy(ContentStrategyBase):
         raise NotImplementedError
 
     @classmethod
-    async def download_all(cls, *args):
-        raise NotImplementedError
+    async def download_all(cls, *args) -> AppResult:
+        return await cls.download(*args)
 
 
 class _DownloadableContentStrategy(ContentStrategy):

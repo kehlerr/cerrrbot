@@ -1,7 +1,8 @@
 import logging
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from aiogram import Bot, F, Router
+from aiogram.methods import EditMessageReplyMarkup
 from aiogram.filters.callback_data import CallbackData
 from aiogram.types import (
     CallbackQuery,
@@ -12,9 +13,10 @@ from aiogram.types import (
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from .actions import MessageAction, MessageActions
-from .api import add_new_message, perform_message_action
+from .api import add_new_message, get_messages_to_perform_actions, perform_message_action
 from .constants import CUSTOM_MESSAGE_MIN_ORDER
 from .message_document import MessageDocument
+from common import AppExceptionError
 
 logger = logging.getLogger("cerrrbot")
 
@@ -24,12 +26,12 @@ router = Router()
 
 class SaveMessageData(CallbackData, prefix="SVM"):
     action: str
-    message_id: str
+    msgdoc_id: str
 
 
 @router.message()
-async def on_received_new_common_message(message: Message) -> None:
-    logger.info(f"Received message: {message}")
+async def on_received_message(message: Message) -> None:
+    logger.debug(f"Received new message: {message}")
     result = await add_new_message(message)
     if result:
         await _process_received_message(message, result.data)
@@ -40,7 +42,11 @@ async def on_received_new_common_message(message: Message) -> None:
 async def _process_received_message(
     message: Message, result_data: Dict[str, Any]
 ) -> None:
-    message_actions = result_data["reply_info"].actions
+    try:
+        message_actions = result_data["reply_info"].actions
+    except KeyError:
+        message_actions = None
+
     if not message_actions:
         return
 
@@ -59,37 +65,59 @@ async def on_action_pressed(
     query: CallbackQuery, callback_data: SaveMessageData, bot: Bot
 ) -> None:
     logger.info("Received data on chosen action: {}".format(callback_data))
-    message_id = callback_data.message_id
-    result = await perform_message_action(message_id, bot, callback_data.action)
+    msgdoc_id = callback_data.msgdoc_id
+    result = await perform_message_action(msgdoc_id, bot, callback_data.action)
     if not result:
         await query.answer("Some error/exception occured, check logs for details.")
         return
 
-    await _process_pressed_action_result(query, message_id, result.data["reply_info"])
+    await process_performed_action_result(msgdoc_id, result, query=query)
 
 
-async def _process_pressed_action_result(
-    query: CallbackQuery, message_id: str, reply_info: Dict[str, Any]
+async def perform_message_actions(bot: Bot) -> None:
+    messages = await get_messages_to_perform_actions(bot)
+    for msgdoc in messages:
+        msgdoc_id = str(msgdoc["_id"])
+        # MessageDocument(msgdoc_id).delete()
+        # continue
+        result = await perform_message_action(msgdoc_id, bot)
+        if result:
+            await process_performed_action_result(msgdoc_id, result, bot=bot, chat_id=msgdoc["chat"]["id"])
+
+
+async def process_performed_action_result(
+    msgdoc_id: str, result: Dict[str, Any],
+    query: Optional[CallbackQuery] = None,
+    bot: Optional[Bot] = None, chat_id: Optional[int] = None
 ) -> None:
+
     try:
-        if reply_info.popup_text:
-            await query.answer(reply_info.popup_text)
-            if not reply_info.need_edit_buttons:
-                return
+        reply_info = result.data["reply_info"]
     except (AttributeError, KeyError):
+        reply_info = None
         pass
 
-    if not reply_info.actions:
-        await query.answer()
+    if not (reply_info and reply_info.actions):
         return
 
-    next_markup = _build_message_actions_menu_kb(reply_info.actions, message_id)
-    await query.message.edit_reply_markup(next_markup)
+    next_markup = _build_message_actions_menu_kb(reply_info.actions, msgdoc_id)
+
+    if query:
+        if reply_info.popup_text:
+            await query.answer(reply_info.popup_text)
+        if reply_info.need_edit_buttons:
+            await query.message.edit_reply_markup(next_markup)
+        return
+
+    if not reply_info.reply_action_message_id or not reply_info.need_edit_buttons:
+        return
+    await bot.edit_message_reply_markup(chat_id, reply_info.reply_action_message_id, reply_markup=next_markup)
 
 
 def _build_message_actions_menu_kb(
-    reply_actions: List[MessageAction], message_id: str
+    reply_actions: List[MessageAction], msgdoc_id: str
 ) -> InlineKeyboardMarkup:
+
     kb_builder = InlineKeyboardBuilder()
     actions_buttons = []
     custom_actions_buttons = {}
@@ -98,7 +126,7 @@ def _build_message_actions_menu_kb(
             text=action.caption,
             callback_data=SaveMessageData(
                 action=action.code,
-                message_id=message_id,
+                msgdoc_id=msgdoc_id,
             ).pack(),
         )
         if action.order >= CUSTOM_MESSAGE_MIN_ORDER:

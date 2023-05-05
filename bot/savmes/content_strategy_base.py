@@ -8,7 +8,7 @@ from common import AppResult
 from settings import TIMEOUT_BEFORE_PERFORMING_DEFAULT_ACTION
 
 from .actions import MessageAction, MessageActions
-from .common import SVM_MsgdocInfo
+from .common import SVM_MsgdocInfo, SVM_ReplyInfo
 from .constants import COMMON_GROUP_KEY
 from .message_document import MessageDocument
 from .message_parser import MessageParser
@@ -49,9 +49,7 @@ class ContentStrategyBase:
 
     @classmethod
     def _prepare_message_info(cls, message_data: Dict[str, Any]) -> SVM_MsgdocInfo:
-        message_info = SVM_MsgdocInfo(
-            action=cls.DEFAULT_ACTION,
-        )
+        message_info = SVM_MsgdocInfo(action=cls.DEFAULT_ACTION)
         common_group_id = message_data.get(COMMON_GROUP_KEY)
         if not common_group_id or not db.NewMessagesCollection.exists_document_in_group(
             COMMON_GROUP_KEY, common_group_id
@@ -64,7 +62,11 @@ class ContentStrategyBase:
     def _prepare_reply_info(
         cls, message_info: SVM_MsgdocInfo, result_data: Dict[str, Any]
     ) -> None:
-        reply_info = result_data.get("reply_info", message_info)
+        try:
+            reply_info = result_data["reply_info"]
+        except KeyError:
+            reply_info = SVM_ReplyInfo(**vars(message_info))
+
         if not reply_info.actions:
             return
 

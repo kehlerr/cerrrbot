@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 
 import db_utils as db
 from aiogram import Bot
@@ -14,7 +14,7 @@ from .message_document import MessageDocument
 logger = logging.getLogger("cerrrbot")
 
 
-async def check_actions_on_new_messages(bot: Bot):
+async def get_messages_to_perform_actions(bot: Bot) -> List[MessageDocument]:
     filter_search = {
         "cb_message_info.perform_action_at": {
             "$lt": int(datetime.now().timestamp()),
@@ -22,14 +22,7 @@ async def check_actions_on_new_messages(bot: Bot):
         }
     }
     messages = db.NewMessagesCollection.get_documents_by_filter(filter_search)
-    result = AppResult()
-    for message_data in messages:
-        # MessageDocument(message_data["_id"]).delete()
-        # continue
-        result_ = await perform_message_action(message_data["_id"], bot)
-        result.merge(result_)
-
-    return result
+    return messages or ()
 
 
 async def add_new_message(message: Message) -> AppResult:

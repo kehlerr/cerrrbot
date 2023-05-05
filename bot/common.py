@@ -21,6 +21,10 @@ from settings import ACTIONS_CONFIG_PATH, ALLOWED_USERS, DATA_DIRECTORY_ROOT
 logger = logging.getLogger("cerrrbot")
 
 
+class AppExceptionError(Exception):
+    """ Generic exception on unexpected error in application."""
+
+
 @dataclass
 class ContentData:
     data: dict
@@ -53,15 +57,15 @@ class AppResult:
 
     def merge(self, *other_results) -> None:
         for result in other_results:
-            if not result:
-                if isinstance(result, bool):
-                    self.status = result
-                else:
-                    self._merge_another(result)
+            if isinstance(result, bool):
+                self.status = self.status and result
+                continue
+
+            self._merge_another(result)
 
     def _merge_another(self, app_result):
-        self.status = app_result.status
-        self._info.append(str(app_result.info))
+        self.status = self.status and app_result.status
+        self._info.extend(str(app_result._info))
         self.data.update(app_result.data)
 
 
@@ -156,6 +160,7 @@ def get_directory_path(directory_path: str) -> os.PathLike:
 
 async def create_periodic(loop, *args) -> None:
     loop.create_task(scheduled(*args))
+
 
 async def scheduled(bot: Bot, method: Callable, wait_for: int):
     while True:
