@@ -33,6 +33,7 @@ class ContentStrategy(ContentStrategyBase):
             logger.error(f"Action method not found:{action.method}")
             return AppResult(False)
 
+        logger.debug(f"Performing action: {action_code} with method: {action.method}")
         result = await action_method(msgdoc, bot, **action.method_args)
         if result:
             cls._prepare_reply_info(msgdoc.cb_message_info, result.data)
@@ -111,7 +112,8 @@ class ContentStrategy(ContentStrategyBase):
         return result
 
     @classmethod
-    async def delete_request(cls, *args, **kwargs) -> AppResult:
+    async def delete_request(cls, msgdoc: MessageDocument, *args, **kwargs) -> AppResult:
+        result = msgdoc.update_message_info(MessageActions.NONE)
         reply_info = SVM_ReplyInfo(
             actions={
                 MessageActions.DELETE_1,
@@ -172,7 +174,9 @@ class ContentStrategy(ContentStrategyBase):
     async def _delete_after_time(
         cls, msgdoc: MessageDocument, bot: Bot, timeout: int
     ) -> AppResult:
-        return msgdoc.update_message_info(MessageActions.DELETE_NOW, new_ttl=timeout)
+        result = msgdoc.update_message_info(MessageActions.DELETE_NOW, new_ttl=timeout)
+        result.data.update({"reply_info": SVM_ReplyInfo(need_edit_buttons=False)})
+        return result
 
     @classmethod
     async def download(cls, *args):

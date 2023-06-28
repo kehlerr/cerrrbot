@@ -27,8 +27,7 @@ async def get_messages_to_perform_actions(bot: Bot) -> List[MessageDocument]:
 
 async def add_new_message(message: Message) -> AppResult:
     cls_strategy = cls_strategy_by_content_type.get(message.content_type, ContentStrategy)
-    result = await cls_strategy.add_new_message(message)
-    return result
+    return await cls_strategy.add_new_message(message)
 
 
 async def perform_message_action(
@@ -40,6 +39,4 @@ async def perform_message_action(
 
     action = msgdoc.cb_message_info.action
     cls_strategy = cls_strategy_by_content_type.get(msgdoc.content_type, ContentStrategy)
-    result = await cls_strategy.perform_action(action, msgdoc, bot)
-    logger.info("[{}]Result performed action {}:{}".format(msgdoc, action, result))
-    return result
+    return await cls_strategy.perform_action(action, msgdoc, bot)
