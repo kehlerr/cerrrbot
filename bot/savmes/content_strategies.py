@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Optional, Union
 
 from aiogram import Bot
 from aiogram.types import ContentType
@@ -10,7 +10,7 @@ from tasks import app
 
 from .actions import CustomMessageAction, MessageActions
 from .common import SVM_MsgdocInfo, SVM_ReplyInfo, save_file
-from .constants import COMMON_GROUP_KEY
+from .constants import COMMON_GROUP_KEY, MAX_LOAD_FILE_SIZE
 from .content_strategy_base import ContentStrategyBase
 from .message_document import MessageDocument
 
@@ -55,8 +55,8 @@ class ContentStrategy(ContentStrategyBase):
     @classmethod
     def _create_task(
         cls,
-        task_info: Dict[str, Any],
-        task_args: Dict[str, Any],
+        task_info: dict[str, Any],
+        task_args: dict[str, Any],
         action: CustomMessageAction,
         msgdoc: MessageDocument,
     ) -> AppResult:
@@ -78,8 +78,7 @@ class ContentStrategy(ContentStrategyBase):
             "additional_caption": f" [{task_status}]",
         }
 
-        result = cls._update_actions(msgdoc, to_add={action: result_data})
-        return result
+        return cls._update_actions(msgdoc, to_add={action: result_data})
 
     @classmethod
     def _get_task_reply(
@@ -95,7 +94,6 @@ class ContentStrategy(ContentStrategyBase):
             result = AppResult()
             reply_info.need_edit_buttons = False
         result.data["reply_info"] = reply_info
-
         return result
 
     @classmethod
@@ -196,10 +194,14 @@ class _DownloadableContentStrategy(ContentStrategy):
     POSSIBLE_ACTIONS = {MessageActions.DELETE_REQUEST, MessageActions.DOWNLOAD}
 
     @classmethod
-    def _prepare_message_info(cls, message_data: Dict[str, Any]) -> SVM_MsgdocInfo:
+    def _prepare_message_info(cls, message_data: dict[str, Any]) -> SVM_MsgdocInfo:
         message_info = super()._prepare_message_info(message_data)
         message_actions = message_info.actions
-        if message_actions and COMMON_GROUP_KEY in message_data:
+        fsize = 0 if cls.content_type_key == ContentType.PHOTO else message_data[cls.content_type_key]["file_size"]
+        if fsize > MAX_LOAD_FILE_SIZE:
+            message_actions.pop(MessageActions.DOWNLOAD.code)
+            message_info.action = MessageActions.KEEP
+        elif message_actions and COMMON_GROUP_KEY in message_data:
             message_actions.pop(MessageActions.DOWNLOAD.code)
             message_actions[MessageActions.DOWNLOAD_ALL.code] = {}
         return message_info
@@ -237,21 +239,20 @@ class _DownloadableContentStrategy(ContentStrategy):
     async def _download(cls, msgdoc: MessageDocument, bot: Bot) -> AppResult:
         from_user, _ = msgdoc.get_from_user_data()
         from_chat, _ = msgdoc.get_from_chat_data()
-        result = await cls._download_file_impl(
+        return await cls._download_file_impl(
             getattr(msgdoc, cls.content_type_key),
             bot,
             from_user=from_user,
             from_chat=from_chat,
         )
-        return result
 
     @classmethod
     async def _download_file_impl(
         cls,
         downloadable: list[Any],
         bot: Bot,
-        from_user: Optional[Dict[str, Any]] = "",
-        from_chat: Optional[Dict[str, Any]] = "",
+        from_user: Optional[dict[str, Any]] = "",
+        from_chat: Optional[dict[str, Any]] = "",
         dir_path: Optional[str] = None,
     ):
 
@@ -260,18 +261,17 @@ class _DownloadableContentStrategy(ContentStrategy):
             return AppResult(False, "Wrong downloadable_data: {}".format(downloadable))
 
         file_name = cls._get_file_name(file_data, from_user, from_chat)
-        result = await save_file(bot, file_data.file_id, file_name, dir_path)
-        return result
+        return await save_file(bot, file_data.file_id, file_name, dir_path)
 
     @classmethod
     def _best_quality_variant(
-        cls, variants_data: List[Any]
-    ) -> Union[Dict[str, Any], None]:
+        cls, variants_data: list[Any]
+    ) -> Union[dict[str, Any], None]:
         return variants_data
 
     @classmethod
     def _get_file_name(
-        cls, file_data: Dict[str, Any], from_user_id: str, from_chat_id: str
+        cls, file_data: dict[str, Any], from_user_id: str, from_chat_id: str
     ) -> str:
         extension = cls._get_extension(file_data)
         file_name = f"{file_data.file_unique_id}.{extension}"
@@ -290,12 +290,8 @@ class PhotoContentStrategy(_DownloadableContentStrategy):
     POSSIBLE_ACTIONS = {MessageActions.DOWNLOAD, MessageActions.DELETE_REQUEST}
 
     @classmethod
-    def _best_quality_variant(
-        cls, variants_data: List[Any]
-    ) -> Union[Dict[str, Any], None]:
-        sorted_variants = sorted(
-            variants_data, key=lambda v: getattr(v, cls.sort_key), reverse=True
-        )
+    def _best_quality_variant(cls, variants_data: list[Any]) -> Optional[dict[str, Any]]:
+        sorted_variants = sorted(variants_data, key=lambda v: getattr(v, cls.sort_key), reverse=True)
         return sorted_variants and sorted_variants[0]
 
 
@@ -343,9 +339,7 @@ class StickerContentStrategy(_DownloadableContentStrategy):
             return result
 
         for sticker in sticker_set.stickers:
-            result_ = await cls._download_file_impl(
-                sticker, bot, dir_path=result.data["path"]
-            )
+            result_ = await cls._download_file_impl(sticker, bot, dir_path=result.data["path"])
             result.merge(result_)
 
         if result:
@@ -357,11 +351,11 @@ class StickerContentStrategy(_DownloadableContentStrategy):
         return "webm" if file_data.is_video else super()._get_extension(file_data)
 
     @staticmethod
-    def _get_from_user_data(*args) -> Tuple[str, str]:
+    def _get_from_user_data(*args) -> tuple[str, str]:
         return "", ""
 
     @staticmethod
-    def _get_from_chat_id(*args) -> Tuple[str, str]:
+    def _get_from_chat_id(*args) -> tuple[str, str]:
         return "", ""
 
 
