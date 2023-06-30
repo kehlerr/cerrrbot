@@ -187,7 +187,7 @@ class ContentStrategy(ContentStrategyBase):
 
 class _DownloadableContentStrategy(ContentStrategy):
     content_type_key: str
-    file_extension: str
+    file_extension: str = ""
     sort_key: str = "height"
 
     DEFAULT_ACTION = MessageActions.DOWNLOAD
@@ -274,7 +274,10 @@ class _DownloadableContentStrategy(ContentStrategy):
         cls, file_data: dict[str, Any], from_user_id: str, from_chat_id: str
     ) -> str:
         extension = cls._get_extension(file_data)
-        file_name = f"{file_data.file_unique_id}.{extension}"
+        file_name = f"{file_data.file_unique_id}"
+        extension = cls._get_extension(file_data)
+        if extension:
+            file_name = f"{file_name}.{extension}"
         if from_user_id and from_chat_id:
             file_name = f"{from_user_id}_{from_chat_id}-{file_name}"
         return file_name
@@ -319,6 +322,9 @@ class VideonoteContentStrategy(_DownloadableContentStrategy):
 class VoiceContentStrategy(_DownloadableContentStrategy):
     content_type_key: str = ContentType.VOICE
     file_extension: str = "ogg"
+
+class DocumentContentStrategy(_DownloadableContentStrategy):
+    content_type_key: str = ContentType.DOCUMENT
 
 
 class StickerContentStrategy(_DownloadableContentStrategy):
@@ -368,5 +374,5 @@ cls_strategy_by_content_type = {
     ContentType.STICKER: StickerContentStrategy,
     ContentType.VIDEO_NOTE: VideonoteContentStrategy,
     ContentType.VOICE: VoiceContentStrategy,
-    ContentType.DOCUMENT: ContentStrategy,
+    ContentType.DOCUMENT: DocumentContentStrategy,
 }
