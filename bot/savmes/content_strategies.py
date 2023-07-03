@@ -190,20 +190,19 @@ class _DownloadableContentStrategy(ContentStrategy):
     file_extension: str = ""
     sort_key: str = "height"
 
-    DEFAULT_ACTION = MessageActions.DOWNLOAD
-    POSSIBLE_ACTIONS = {MessageActions.DELETE_REQUEST, MessageActions.DOWNLOAD}
+    DEFAULT_ACTION = MessageActions.KEEP
+    POSSIBLE_ACTIONS = {MessageActions.KEEP, MessageActions.DELETE_REQUEST, MessageActions.DOWNLOAD}
 
     @classmethod
     def _prepare_message_info(cls, message_data: dict[str, Any]) -> SVM_MsgdocInfo:
         message_info = super()._prepare_message_info(message_data)
         message_actions = message_info.actions
         fsize = 0 if cls.content_type_key == ContentType.PHOTO else message_data[cls.content_type_key]["file_size"]
-        if fsize > MAX_LOAD_FILE_SIZE:
-            message_actions.pop(MessageActions.DOWNLOAD.code)
-            message_info.action = MessageActions.KEEP
-        elif message_actions and COMMON_GROUP_KEY in message_data:
-            message_actions.pop(MessageActions.DOWNLOAD.code)
-            message_actions[MessageActions.DOWNLOAD_ALL.code] = {}
+        if fsize < MAX_LOAD_FILE_SIZE:
+            message_info.action = MessageActions.DOWNLOAD
+            if message_actions and COMMON_GROUP_KEY in message_data:
+                message_actions.pop(MessageActions.DOWNLOAD.code)
+                message_actions[MessageActions.DOWNLOAD_ALL.code] = {}
         return message_info
 
     @classmethod
@@ -290,7 +289,6 @@ class _DownloadableContentStrategy(ContentStrategy):
 class PhotoContentStrategy(_DownloadableContentStrategy):
     content_type_key: str = ContentType.PHOTO
     file_extension: str = "jpg"
-    POSSIBLE_ACTIONS = {MessageActions.DOWNLOAD, MessageActions.DELETE_REQUEST}
 
     @classmethod
     def _best_quality_variant(cls, variants_data: list[Any]) -> Optional[dict[str, Any]]:
@@ -301,7 +299,6 @@ class PhotoContentStrategy(_DownloadableContentStrategy):
 class VideoContentStrategy(_DownloadableContentStrategy):
     content_type_key: str = ContentType.VIDEO
     file_extension: str = "mp4"
-    POSSIBLE_ACTIONS = {MessageActions.DOWNLOAD, MessageActions.DELETE_REQUEST}
 
 
 class AnimationContentStrategy(_DownloadableContentStrategy):
