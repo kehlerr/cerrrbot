@@ -92,7 +92,7 @@ class CustomMessageAction(MessageAction):
 
         regex = re.compile(regex_pattern, re.IGNORECASE)
         for data in regex.finditer(text):
-            parsed = data.groupdict()
+            parsed = data.group()
             if parsed:
                 parsed_data.append(parsed)
         return parsed_data
