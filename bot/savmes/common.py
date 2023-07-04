@@ -31,9 +31,10 @@ class SVM_ReplyInfo(SVM_MsgdocInfo):
             self.actions = {a.code: {} for a in self.actions}
 
 
-async def save_file(bot: Bot, file_id: str, file_name: str, dir_path: str) -> AppResult:
-    if not dir_path:
-        dir_path = DATA_DIRECTORY_ROOT
+async def save_file(bot: Bot, file_id: str, file_name: str, dir_name: str) -> AppResult:
+    dir_path = os.path.join(DATA_DIRECTORY_ROOT, dir_name)
+    if not os.path.exists(dir_path):
+        os.mkdir(dir_path)
 
     file_path = os.path.join(dir_path, file_name)
     try:

@@ -1,4 +1,5 @@
 import logging
+import os
 from typing import Any, Optional, Union
 
 from aiogram import Bot
@@ -250,15 +251,16 @@ class _DownloadableContentStrategy(ContentStrategy):
         cls,
         downloadable: list[Any],
         bot: Bot,
-        from_user: Optional[dict[str, Any]] = "",
-        from_chat: Optional[dict[str, Any]] = "",
-        dir_path: Optional[str] = None,
-    ):
+        from_user: Optional[str] = "",
+        from_chat: Optional[str] = "",
+        dir_name: Optional[str] = "",
+    ) -> AppResult:
 
         file_data = cls._best_quality_variant(downloadable)
         if not file_data:
             return AppResult(False, "Wrong downloadable_data: {}".format(downloadable))
 
+        dir_path = os.path.join(str(from_user), dir_name)
         file_name = cls._get_file_name(file_data, from_user, from_chat)
         return await save_file(bot, file_data.file_id, file_name, dir_path)
 
@@ -335,14 +337,11 @@ class StickerContentStrategy(_DownloadableContentStrategy):
 
     @classmethod
     async def download_all(cls, msgdoc: MessageDocument, bot: Bot) -> AppResult:
+        result = AppResult()
         sticker_set_name = msgdoc.sticker.set_name
         sticker_set = await bot.get_sticker_set(sticker_set_name)
-        result = create_directory(sticker_set_name)
-        if not result:
-            return result
-
         for sticker in sticker_set.stickers:
-            result_ = await cls._download_file_impl(sticker, bot, dir_path=result.data["path"])
+            result_ = await cls._download_file_impl(sticker, bot, dir_name=sticker_set_name)
             result.merge(result_)
 
         if result:
