@@ -154,7 +154,7 @@ class ContentStrategy(ContentStrategyBase):
             result = await bot.delete_message(msgdoc.chat.id, message_id)
             result = AppResult(result)
         except AttributeError:
-            logger.info(
+            logger.warning(
                 "[{}] Not found action message, no need to delete it".format(msgdoc._id)
             )
             result = AppResult()

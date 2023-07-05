@@ -94,7 +94,7 @@ class MessageDocument(Message):
         if new_action is not None:
             self.cb_message_info.action = new_action.code
             if new_action == MessageActions.NONE:
-                self.cb_message_info.perform_action_at = -1
+                self.cb_message_info.perform_action_at = 0
 
         if new_actions is not None:
             if not self.cb_message_info.actions:

@@ -8,13 +8,14 @@ from aiogram.types import Message
 from common import AppResult
 
 from .actions import MessageActions
+from .constants import MESSAGE_DOCUMENT_TTL
 from .content_strategies import ContentStrategy, cls_strategy_by_content_type
 from .message_document import MessageDocument
 
 logger = logging.getLogger("cerrrbot")
 
 
-async def get_messages_to_perform_actions(bot: Bot) -> List[MessageDocument]:
+def get_messages_to_perform_actions() -> List[MessageDocument]:
     filter_search = {
         "cb_message_info.perform_action_at": {
             "$lt": int(datetime.now().timestamp()),
@@ -22,7 +23,18 @@ async def get_messages_to_perform_actions(bot: Bot) -> List[MessageDocument]:
         }
     }
     messages = db.NewMessagesCollection.get_documents_by_filter(filter_search)
-    return messages or ()
+    return messages
+
+
+def get_deprecated_messages() -> List[MessageDocument]:
+    filter_search = {
+        "cb_message_info.perform_action_at": {
+            "$lt": int(datetime.now().timestamp()) - MESSAGE_DOCUMENT_TTL,
+            "$gte": 0,
+        }
+    }
+    messages = db.NewMessagesCollection.get_documents_by_filter(filter_search)
+    return messages
 
 
 async def add_new_message(message: Message) -> AppResult:

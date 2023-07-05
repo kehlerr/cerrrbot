@@ -13,7 +13,8 @@ from aiogram.types import (
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from .actions import MessageAction, MessageActions
-from .api import add_new_message, get_messages_to_perform_actions, perform_message_action
+from .api import add_new_message, get_messages_to_perform_actions, perform_message_action, get_deprecated_messages
+from .content_strategies import cls_strategy_by_content_type, ContentStrategy
 from .constants import CUSTOM_MESSAGE_MIN_ORDER
 from .message_document import MessageDocument
 from common import AppExceptionError
@@ -75,7 +76,7 @@ async def on_action_pressed(
 
 
 async def perform_message_actions(bot: Bot) -> None:
-    messages = await get_messages_to_perform_actions(bot)
+    messages = get_messages_to_perform_actions()
     for msgdoc in messages:
         msgdoc_id = str(msgdoc["_id"])
         # MessageDocument(msgdoc_id).delete()
@@ -83,6 +84,17 @@ async def perform_message_actions(bot: Bot) -> None:
         result = await perform_message_action(msgdoc_id, bot)
         if result:
             await process_performed_action_result(msgdoc_id, result, bot=bot, chat_id=msgdoc["chat"]["id"])
+
+
+async def delete_deprecated_messages(bot: Bot) -> None:
+    messages = get_deprecated_messages()
+    for msg_data in messages:
+        msgdoc_id = str(msg_data["_id"])
+        msgdoc = MessageDocument(msgdoc_id)
+        logger.info(f"Removing deprecated message:{msgdoc}")
+        _cls = cls_strategy_by_content_type.get(msgdoc.content_type, ContentStrategy)
+        await _cls.delete_reply_message(msgdoc, bot)
+        msgdoc.delete()
 
 
 async def process_performed_action_result(

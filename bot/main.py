@@ -12,7 +12,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from commands_pass import pass_form_router
 from common import CheckUserMiddleware, create_periodic, navigate_content
-from constants import CHECK_FOR_NEW_TASKS_TIMEOUT, Action, UserAction
+from constants import CHECK_FOR_NEW_MESSAGES_TIMEOUT, CHECK_FOR_DEPRECATED_MESSAGES_TIMEOUT, Action, UserAction
 from keyboards import Keyboards as kbs
 from settings import TOKEN
 
@@ -89,7 +89,8 @@ def main_menu_kb() -> types.InlineKeyboardMarkup:
 
 
 async def create_periodic_tasks(event_loop, bot: Bot) -> None:
-    await create_periodic(event_loop, bot, savmes.perform_message_actions, CHECK_FOR_NEW_TASKS_TIMEOUT)
+    await create_periodic(event_loop, bot, savmes.perform_message_actions, CHECK_FOR_NEW_MESSAGES_TIMEOUT)
+    await create_periodic(event_loop, bot, savmes.delete_deprecated_messages, CHECK_FOR_DEPRECATED_MESSAGES_TIMEOUT)
 
 
 async def main():
