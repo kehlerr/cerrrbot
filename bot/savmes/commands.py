@@ -3,7 +3,6 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from aiogram import Bot, F, Router
-from aiogram.methods import EditMessageReplyMarkup
 from aiogram.filters.callback_data import CallbackData
 from aiogram.types import (
     CallbackQuery,
@@ -13,11 +12,11 @@ from aiogram.types import (
 )
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from common import AppExceptionError
-from .actions import MessageAction, MessageActions
+from constants import CUSTOM_MESSAGE_MIN_ORDER
+from message_action import MessageAction
+from .actions import MessageActions
 from .api import add_new_message, get_messages_to_perform_actions, perform_message_action, get_deprecated_messages
 from .content_strategies import cls_strategy_by_content_type, ContentStrategy
-from .constants import CUSTOM_MESSAGE_MIN_ORDER
 from .message_document import MessageDocument
 
 logger = logging.getLogger("cerrrbot")
@@ -62,7 +61,7 @@ async def _process_received_message(
     )
 
 
-@router.callback_query(SaveMessageData.filter(F.action.in_(MessageActions.CODES)))
+@router.callback_query(SaveMessageData.filter(F.action.in_(MessageActions.BY_CODE)))
 async def on_action_pressed(
     query: CallbackQuery, callback_data: SaveMessageData, bot: Bot
 ) -> None:

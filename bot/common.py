@@ -16,7 +16,7 @@ from constants import (
     UserAction,
 )
 from keyboards import Keyboards as kbs
-from settings import ACTIONS_CONFIG_PATH, ALLOWED_USERS, DATA_DIRECTORY_ROOT
+from settings import ALLOWED_USERS, DATA_DIRECTORY_ROOT
 
 logger = logging.getLogger("cerrrbot")
 
@@ -156,8 +156,3 @@ def create_directory(directory_name: str) -> AppResult:
 
 def get_directory_path(directory_path: str) -> os.PathLike:
     return os.path.join(DATA_DIRECTORY_ROOT, directory_path)
-
-
-def get_actions_config() -> Dict[str, Any]:
-    with open(ACTIONS_CONFIG_PATH, "r") as fp:
-        return yaml.safe_load(fp)

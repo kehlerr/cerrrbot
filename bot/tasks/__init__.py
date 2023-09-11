@@ -1,16 +1,32 @@
+import os
 from importlib import import_module
 
 from celery import Celery, Task
-from common import get_actions_config
-from settings import REDIS_BACKEND_DB_IDX, REDIS_BROKER_DB_IDX, REDIS_HOST, REDIS_PORT
+
+from settings import (
+    REDIS_BACKEND_DB_IDX,
+    REDIS_BROKER_DB_IDX,
+    REDIS_HOST,
+    REDIS_PORT,
+    PLUGINS_MODULE_NAME,
+    PLUGINS_DIR_PATH
+)
 
 
 def register_tasks(app: Celery) -> None:
-    loaded_modules = {}
-    for action_cfg in get_actions_config():
-        module_name = action_cfg["module"]
-        loaded_modules.setdefault(module_name, import_module(module_name))
-        task_cls = getattr(loaded_modules[module_name], action_cfg["task_cls"])
+    loaded_tasks = []
+    for plugin_name in os.listdir(PLUGINS_DIR_PATH):
+        try:
+            plugin_module = import_module(f"{PLUGINS_MODULE_NAME}.{plugin_name}")
+        except ModuleNotFoundError:
+            continue
+
+        try:
+            loaded_tasks.extend(plugin_module.tasks)
+        except AttributeError:
+            continue
+
+    for task_cls in loaded_tasks:
         app.register_task(task_cls)
 
 

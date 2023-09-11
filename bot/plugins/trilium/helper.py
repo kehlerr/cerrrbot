@@ -2,7 +2,7 @@ import re
 from typing import List
 
 import requests
-from settings import (
+from .settings import (
     TRILIUM_NOTE_ID_BOOK_NOTES_ALL,
     TRILIUM_NOTE_ID_BOOK_ROOT,
     TRILIUM_NOTE_ID_BOOKMARKS_URL,
@@ -93,8 +93,8 @@ def create_or_get_parent_note(
 
 
 def init_notes():
-    existing = trilium_client.search_note(TRILIUM_NOTE_ID_BOOK_ROOT)
-    if existing["results"]:
+    response = trilium_client.get_note(TRILIUM_NOTE_ID_BOOK_ROOT)
+    if "noteId" in response:
         return
 
     trilium_client.create_note(

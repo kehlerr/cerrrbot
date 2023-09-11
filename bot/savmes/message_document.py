@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from dacite import from_dict
 from dataclasses import asdict
 from datetime import datetime
 from typing import Any, Dict, Optional, Sequence, Tuple
@@ -8,9 +9,9 @@ from typing import Any, Dict, Optional, Sequence, Tuple
 import db_utils as db
 from aiogram.types import Message
 from common import AppResult
-from dacite import from_dict
+from message_action import MessageAction
 
-from .actions import MessageAction, MessageActions
+from .actions import MessageActions
 from .common import SVM_MsgdocInfo
 from .constants import COMMON_GROUP_KEY
 

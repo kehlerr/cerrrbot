@@ -49,7 +49,7 @@ async def perform_message_action(
 ) -> AppResult:
     msgdoc = MessageDocument(message_id)
     if action_code:
-        msgdoc.update_message_info(MessageActions.ACTION_BY_CODE[action_code])
+        msgdoc.update_message_info(MessageActions.BY_CODE[action_code])
 
     action = msgdoc.cb_message_info.action
     cls_strategy = cls_strategy_by_content_type.get(msgdoc.content_type, ContentStrategy)

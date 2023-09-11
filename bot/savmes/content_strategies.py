@@ -6,10 +6,12 @@ from aiogram import Bot
 from aiogram.types import ContentType
 from celery import signature, states
 from celery.result import AsyncResult as CeleryTaskResult
-from common import AppResult, create_directory
+
+from common import AppResult
+from message_action import CustomMessageAction
 from tasks import app
 
-from .actions import CustomMessageAction, MessageActions
+from .actions import MessageActions
 from .common import SVM_MsgdocInfo, SVM_ReplyInfo, save_file
 from .constants import COMMON_GROUP_KEY, MAX_LOAD_FILE_SIZE
 from .content_strategy_base import ContentStrategyBase
@@ -23,7 +25,7 @@ class ContentStrategy(ContentStrategyBase):
     async def perform_action(
         cls, action_code: str, msgdoc: MessageDocument, bot: Bot
     ) -> AppResult:
-        action = MessageActions.ACTION_BY_CODE.get(action_code)
+        action = MessageActions.BY_CODE.get(action_code)
         if not action:
             logger.error(f"Action not found: {action_code}")
             return AppResult(False)
@@ -44,7 +46,7 @@ class ContentStrategy(ContentStrategyBase):
     @classmethod
     async def custom_task(cls, msgdoc: MessageDocument, *args, **task_info) -> AppResult:
         action_code = task_info["code"]
-        action = MessageActions.ACTION_BY_CODE[action_code]
+        action = MessageActions.BY_CODE[action_code]
         action_data = msgdoc.cb_message_info.actions[action_code]
         task_id = action_data.get("task_id")
         if task_id:

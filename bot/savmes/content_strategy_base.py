@@ -5,9 +5,10 @@ from typing import Any, Dict, List, Optional
 import db_utils as db
 from aiogram.types import Message
 from common import AppResult
+from message_action import MessageAction
 from settings import TIMEOUT_BEFORE_PERFORMING_DEFAULT_ACTION
 
-from .actions import MessageAction, MessageActions
+from .actions import MessageActions
 from .common import SVM_MsgdocInfo, SVM_ReplyInfo
 from .constants import COMMON_GROUP_KEY
 from .message_document import MessageDocument
@@ -72,7 +73,7 @@ class ContentStrategyBase:
 
         reply_actions = []
         for action_code, action_data in reply_info.actions.items():
-            action = MessageActions.ACTION_BY_CODE[action_code]
+            action = MessageActions.BY_CODE[action_code]
             additional_caption = action_data.get("additional_caption")
             if additional_caption:
                 action = replace(action, caption=f"{action.caption}{additional_caption}")
