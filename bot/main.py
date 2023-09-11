@@ -10,9 +10,11 @@ from aiogram import Bot, Dispatcher, F, Router, types
 from aiogram.filters import Command, callback_data
 from aiogram.fsm.context import FSMContext
 from aiogram.utils.keyboard import InlineKeyboardBuilder
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+
 from commands_pass import pass_form_router
-from common import CheckUserMiddleware, create_periodic, navigate_content
-from constants import CHECK_FOR_NEW_MESSAGES_TIMEOUT, CHECK_FOR_DEPRECATED_MESSAGES_TIMEOUT, Action, UserAction
+from common import CheckUserMiddleware, navigate_content
+from constants import CHECK_FOR_NEW_MESSAGES_TIMEOUT, CHECK_FOR_DEPRECATED_MESSAGES_TIMEOUT, CHECK_FOR_NOTIFICATIONS, Action, UserAction
 from keyboards import Keyboards as kbs
 from settings import TOKEN
 
@@ -25,9 +27,8 @@ formatter = logging.Formatter(
 log_handler_stream.setFormatter(formatter)
 logger.addHandler(log_handler_stream)
 
-# log_handler = TimedRotatingFileHandler("main.log", when="s", interval=10, backupCount=5)
-# log_handler.setFormatter(formatter)
-# logger.addHandler(log_handler)
+
+scheduler = AsyncIOScheduler()
 
 
 main_router = Router()
@@ -89,8 +90,10 @@ def main_menu_kb() -> types.InlineKeyboardMarkup:
 
 
 async def create_periodic_tasks(event_loop, bot: Bot) -> None:
-    await create_periodic(event_loop, bot, savmes.perform_message_actions, CHECK_FOR_NEW_MESSAGES_TIMEOUT)
-    await create_periodic(event_loop, bot, savmes.delete_deprecated_messages, CHECK_FOR_DEPRECATED_MESSAGES_TIMEOUT)
+    scheduler.add_job(savmes.perform_message_actions, "interval", (bot,), seconds=CHECK_FOR_NEW_MESSAGES_TIMEOUT)
+    scheduler.add_job(savmes.delete_deprecated_messages, "interval", (bot,), seconds=CHECK_FOR_DEPRECATED_MESSAGES_TIMEOUT)
+    scheduler.add_job(savmes.process_notifications_messages, "interval", (bot,), seconds=CHECK_FOR_NOTIFICATIONS)
+    scheduler.start()
 
 
 async def main():

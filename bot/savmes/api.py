@@ -23,6 +23,7 @@ def get_messages_to_perform_actions() -> List[MessageDocument]:
         }
     }
     messages = db.NewMessagesCollection.get_documents_by_filter(filter_search)
+    logger.debug("Found {} messages to perform action".format(len(messages)))
     return messages
 
 
@@ -34,6 +35,7 @@ def get_deprecated_messages() -> List[MessageDocument]:
         }
     }
     messages = db.NewMessagesCollection.get_documents_by_filter(filter_search)
+    logger.debug("Found {} deprecated messages".format(len(messages)))
     return messages
 
 

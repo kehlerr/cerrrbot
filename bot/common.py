@@ -158,16 +158,6 @@ def get_directory_path(directory_path: str) -> os.PathLike:
     return os.path.join(DATA_DIRECTORY_ROOT, directory_path)
 
 
-async def create_periodic(loop, *args) -> None:
-    loop.create_task(scheduled(*args))
-
-
-async def scheduled(bot: Bot, method: Callable, wait_for: int):
-    while True:
-        await method(bot)
-        await asyncio.sleep(wait_for)
-
-
 def get_actions_config() -> Dict[str, Any]:
     with open(ACTIONS_CONFIG_PATH, "r") as fp:
         return yaml.safe_load(fp)

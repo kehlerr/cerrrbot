@@ -5,6 +5,7 @@ from .helper import add_bookmark_urls, add_note
 
 
 class TriliumNote(Task):
+
     def run(self, _, msgdoc) -> AppResult:
         forward_from_id, title = msgdoc.get_from_chat_data()
         if not forward_from_id:
@@ -14,5 +15,6 @@ class TriliumNote(Task):
 
 
 class TriliumBookmark(Task):
+
     def run(self, links, msgdoc) -> AppResult:
         return AppResult(add_bookmark_urls(msgdoc.message_text, links))

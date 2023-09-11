@@ -202,7 +202,7 @@ class _DownloadableContentStrategy(ContentStrategy):
         if fsize < MAX_LOAD_FILE_SIZE:
             message_info.action = MessageActions.DOWNLOAD
             if message_actions and COMMON_GROUP_KEY in message_data:
-                message_actions.pop(MessageActions.DOWNLOAD.code)
+                message_actions.pop(MessageActions.DOWNLOAD.code, None)
                 message_actions[MessageActions.DOWNLOAD_ALL.code] = {}
         return message_info
 

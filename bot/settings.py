@@ -27,6 +27,7 @@ REDIS_HOST = config("REDIS_HOST", default="localhost")
 REDIS_PORT = config("REDIS_PORT", default=6379, cast=int)
 REDIS_BROKER_DB_IDX = config("REDIS_BROKER_DB_IDX", default=0, cast=int)
 REDIS_BACKEND_DB_IDX = config("REDIS_BACKEND_DB_IDX", default=1, cast=int)
+REDIS_NOTIFICATIONS_DB_IDX = config("REDIS_BACKEND_DB_IDX", default=2, cast=int)
 
 TRILIUM_HOST = config("TRILIUM_HOST", default="localhost")
 TRILIUM_PORT = config("TRILIUM_PORT", default=8080, cast=int)
