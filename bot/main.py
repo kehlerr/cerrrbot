@@ -6,6 +6,7 @@ from enum import Enum
 
 import db_utils
 import savmes
+import notifications
 from aiogram import Bot, Dispatcher, F, Router, types
 from aiogram.filters import Command, callback_data
 from aiogram.fsm.context import FSMContext
@@ -92,7 +93,7 @@ def main_menu_kb() -> types.InlineKeyboardMarkup:
 async def create_periodic_tasks(event_loop, bot: Bot) -> None:
     scheduler.add_job(savmes.perform_message_actions, "interval", (bot,), seconds=CHECK_FOR_NEW_MESSAGES_TIMEOUT)
     scheduler.add_job(savmes.delete_deprecated_messages, "interval", (bot,), seconds=CHECK_FOR_DEPRECATED_MESSAGES_TIMEOUT)
-    scheduler.add_job(savmes.process_notifications_messages, "interval", (bot,), seconds=CHECK_FOR_NOTIFICATIONS)
+    scheduler.add_job(notifications.process_notifications, "interval", (bot,), seconds=CHECK_FOR_NOTIFICATIONS)
     scheduler.start()
 
 

@@ -13,7 +13,6 @@ from aiogram.types import (
 )
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from cache import push_message_notification
 from common import AppExceptionError
 from .actions import MessageAction, MessageActions
 from .api import add_new_message, get_messages_to_perform_actions, perform_message_action, get_deprecated_messages
@@ -97,10 +96,6 @@ async def delete_deprecated_messages(bot: Bot) -> None:
         _cls = cls_strategy_by_content_type.get(msgdoc.content_type, ContentStrategy)
         await _cls.delete_reply_message(msgdoc, bot)
         msgdoc.delete()
-
-
-async def process_notifications_messages(bot: Bot) -> None:
-    await push_message_notification(123, data)
 
 
 async def process_performed_action_result(

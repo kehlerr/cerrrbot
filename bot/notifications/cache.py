@@ -33,3 +33,9 @@ async def push_message_notification(message_id: int, notification_data: dict) ->
     redis = await get_redis()
     data = json.dumps({"test": 123234, "ololo": "kek"})
     await redis.set(message_id, notification_data)
+
+
+async def process_notifications(bot):
+    redis = await get_redis()
+    for key in await redis.iscan("notification:*"):
+        notification_data = await redis.object_encoding(key)
