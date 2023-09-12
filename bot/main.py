@@ -13,7 +13,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-from commands_pass import pass_form_router
+#from commands_pass import pass_form_router
 from common import CheckUserMiddleware, navigate_content
 from constants import CHECK_FOR_NEW_MESSAGES_TIMEOUT, CHECK_FOR_DEPRECATED_MESSAGES_TIMEOUT, CHECK_FOR_NOTIFICATIONS, Action, UserAction
 from keyboards import Keyboards as kbs
@@ -112,7 +112,7 @@ async def main():
     loop = asyncio.get_event_loop()
     await create_periodic_tasks(loop, bot)
 
-    main_router.include_router(pass_form_router)
+    #main_router.include_router(pass_form_router)
     main_router.include_router(savmes.router)
 
     dp = Dispatcher()

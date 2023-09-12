@@ -7,4 +7,7 @@ celery==5.2.7
 Redis==4.5.4
 requests==2.28.2
 trilium-py==0.7.1
-pyaml==21.10.1
+orjson==3.9.7
+apscheduler==3.10.4
+pydantic==1.10.12
+httpx==0.25.0

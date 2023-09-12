@@ -1,12 +1,15 @@
-import aioredis
-import asyncio
 import logging
+from uuid import uuid4
 
-from aioredis import RedisError
+from aiogram import Bot
+from redis import asyncio as aioredis
 
+from common import AppResult
 from settings import REDIS_HOST, REDIS_PORT, REDIS_NOTIFICATIONS_DB_IDX
 
-logger = logging.getLogger(__name__)
+from .notification import Notificaiton
+
+logger = logging.getLogger("cerrrbot")
 
 _redis = None
 
@@ -29,13 +32,42 @@ async def close_redis():
     _redis = None
 
 
-async def push_message_notification(message_id: int, notification_data: dict) -> None:
-    redis = await get_redis()
-    data = json.dumps({"test": 123234, "ololo": "kek"})
-    await redis.set(message_id, notification_data)
+CACHE_KEY_PREFIX_NOTIFICATION = "notification"
 
 
-async def process_notifications(bot):
+async def push_message_notification(notification: Notificaiton) -> AppResult:
+    key = f"{CACHE_KEY_PREFIX_NOTIFICATION}:{uuid4()}"
+    try:
+        redis = await get_redis()
+        await redis.set(key, notification.model_dump())
+    except Exception as exc:
+        logger.exception(exc)
+        return AppResult(False, exc)
+
+    logger.info(f"Notification pushed: {key}")
+    return AppResult()
+
+
+async def process_notifications(bot: Bot):
     redis = await get_redis()
-    for key in await redis.iscan("notification:*"):
-        notification_data = await redis.object_encoding(key)
+    async for key in redis.scan_iter(f"{CACHE_KEY_PREFIX_NOTIFICATION}:*"):
+        logger.info(f"Got notification: {key}")
+        notification_data = await redis.get(key)
+        notification = Notificaiton.model_load(Notificaiton, notification_data)
+        result = await send_notification_message(bot, notification)
+        if result:
+            await redis.delete(key)
+
+
+async def send_notification_message(bot: Bot, notification: Notificaiton) -> AppResult:
+    try:
+        await bot.send_message(
+            chat_id=notification.chat_id,
+            text=notification.text,
+            reply_to_message_id=notification.reply_to_message_id
+        )
+    except Exception as exc:
+        logger.exception(exc)
+        return AppResult(False, exc)
+
+    return AppResult

@@ -3,6 +3,8 @@ import os
 import re
 
 import requests
+from httpx import URL
+
 from common import AppResult, create_directory
 
 
@@ -16,8 +18,8 @@ class TelegraphDownloader:
 
     def __init__(self, url: str):
         self.status = AppResult()
-        self._host = None
-        self._url = url
+        #self._url = URL(url, scheme=self.SCHEME)
+        self._url = URL(url)
         self._directory_path = None
         self._page_content = None
         self._media_data = None
@@ -44,26 +46,20 @@ class TelegraphDownloader:
             self.status = AppResult(False, "Empty media urls")
             return
 
-        if not self._url.startswith("http"):
-            self._url = f"{self.SCHEME}://{self._url}"
-
-        url_parts = self._url.split("/")
-        self._host = url_parts[2]
-
-        self._setup_directory(url_parts[3])
+        self._setup_directory()
         self._setup_media_data()
 
     def _setup_media_data(self) -> None:
         media_data = []
-        for url in self._media_data:
-            if not url.startswith("http"):
-                continue
-            file_name = url.split("/")[-1]
-            media_data.append((url, file_name))
+        for media_path in self._media_data:
+            file_name = media_path.split("/")[-1]
+            media_url = self._url.copy_with(path=media_path)
+            media_data.append((media_url, file_name))
 
         self._media_data = media_data
 
-    def _setup_directory(self, dir_name: str) -> None:
+    def _setup_directory(self) -> None:
+        dir_name = self._url.path.split('/')[-1]
         create_result = create_directory(dir_name)
         if not create_result:
             self.status = create_result

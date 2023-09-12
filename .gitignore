@@ -4,3 +4,6 @@ logs/*
 *.log*
 **/__pycache__/*
 .env
+
+# bot downloads, apps data, etc
+appdata/

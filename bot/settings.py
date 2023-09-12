@@ -3,21 +3,19 @@ import os
 from decouple import config
 
 DEBUG = config("CERRRBOT_DEBUG", default=False, cast=bool)
-if DEBUG:
-    SCHEME = "http"
-else:
-    SCHEME = "https"
+SCHEME = "http" if DEBUG else "https"
 
 ALLOWED_USERS = config(
     "ALLOWED_USERS", cast=lambda v: [int(s.strip()) for s in v.split(",") if s], default=""
 )
 
-DATA_DIRECTORY_ROOT = config("DATA_DIRECTORY_ROOT", default="")
+DATA_DIRECTORY_ROOT = config("DATA_DIRECTORY_ROOT", default=os.path.join(os.getcwd(), "appdata"))
+assert os.path.isdir(DATA_DIRECTORY_ROOT), f"DATA_DIRECTORY_ROOT doesn't exists: {DATA_DIRECTORY_ROOT}"
 
 TOKEN = config("BOT_TOKEN")
 
-OTP_SECRET_KEY = config("OTP_SECRET_KEY", default="")
-PASS_STORE_DIR = config("PASS_STORE_DIR", default="")
+#OTP_SECRET_KEY = config("OTP_SECRET_KEY", default="")
+#PASS_STORE_DIR = config("PASS_STORE_DIR", default="")
 
 MONGO_DB_HOST = config("MONGO_DB_HOST", default="localhost")
 MONGO_DB_PORT = config("MONGO_DB_PORT", default=27017, cast=int)
@@ -53,3 +51,4 @@ PLUGINS_MODULE_NAME = config(
 )
 
 PLUGINS_DIR_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), PLUGINS_MODULE_NAME)
+assert os.path.isdir(PLUGINS_DIR_PATH), f"PLUGINS_DIR_PATH doesn't exists: {PLUGINS_DIR_PATH}"

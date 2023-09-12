@@ -1,5 +1,4 @@
 import logging
-from dataclasses import replace
 from typing import Any, Dict, List, Optional
 
 import db_utils as db
@@ -76,7 +75,7 @@ class ContentStrategyBase:
             action = MessageActions.BY_CODE[action_code]
             additional_caption = action_data.get("additional_caption")
             if additional_caption:
-                action = replace(action, caption=f"{action.caption}{additional_caption}")
+                action = action.copy(update={"caption": f"{action.caption}{additional_caption}"}, deep=True)
             reply_actions.append(action)
         reply_info.actions = sorted(reply_actions)
 
