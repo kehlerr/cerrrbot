@@ -2,18 +2,14 @@
 
 import asyncio
 import logging
-from enum import Enum
 
 import db_utils
 import savmes
 import notifications
 from aiogram import Bot, Dispatcher, F, Router, types
-from aiogram.filters import Command, callback_data
-from aiogram.fsm.context import FSMContext
-from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.filters import Command
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-#from commands_pass import pass_form_router
 from common import CheckUserMiddleware, navigate_content
 from constants import CHECK_FOR_NEW_MESSAGES_TIMEOUT, CHECK_FOR_DEPRECATED_MESSAGES_TIMEOUT, CHECK_FOR_NOTIFICATIONS, Action, UserAction
 from keyboards import Keyboards as kbs
@@ -29,9 +25,6 @@ log_handler_stream.setFormatter(formatter)
 logger.addHandler(log_handler_stream)
 
 
-scheduler = AsyncIOScheduler()
-
-
 main_router = Router()
 main_router.callback_query.register(
     navigate_content,
@@ -40,61 +33,18 @@ main_router.callback_query.register(
 main_router.message.middleware(CheckUserMiddleware())
 
 
-class MenuApp(str, Enum):
-    pass_app = "Pass app"
-    rtorrent = "RTORRENT"
-
-
-class MenuAppData(callback_data.CallbackData, prefix="menu"):
-    app_name: str
-
-
-@main_router.message(Command(commands=["pass", "pass_menu"]))
-@main_router.callback_query(MenuAppData.filter(F.app_name == MenuApp.pass_app))
-async def show_pass_menu(message: types.Message, bot: Bot, state: FSMContext, event_chat):
-    logger.info(f"[{message.from_user}] Shown pass_menu")
-    prompt = "Choose action for pass store:"
-    commands = (
-        "/pass_add - add new password",
-        "/pass_list - show stored passwords",
-        "/pass_edit - change some password",
-    )
-    pass_menu_txt = "\n".join((prompt, *commands))
-    await state.clear()
-    await message.answer("Returning")
-    await bot.send_message(
-        text=pass_menu_txt, chat_id=event_chat.id, reply_markup=kbs.back_to_main_menu
-    )
-
-
-@main_router.message(Command(commands=["rtorrent"]))
-@main_router.callback_query(MenuAppData.filter(F.app_name == MenuApp.rtorrent))
-async def show_rtorrent_menu(message: types.Message, bot: Bot, event_chat):
-    await message.answer(text="will be soon")
-
-
 @main_router.message(Command(commands=["start", "menu"]))
 async def main_menu(message: types.Message):
-    await show_main_menu(message)
+    await message.answer("Welcome, master")
 
 
-async def show_main_menu(message: types.Message):
-    keyboard = main_menu_kb()
-    await message.answer("Welcome, master", reply_markup=keyboard)
-
-
-def main_menu_kb() -> types.InlineKeyboardMarkup:
-    kb_builder = InlineKeyboardBuilder()
-    for app in MenuApp:
-        kb_builder.button(text=app.value.title(), callback_data=MenuAppData(app_name=app))
-    return kb_builder.as_markup()
-
-
-async def create_periodic_tasks(event_loop, bot: Bot) -> None:
+async def create_periodic_tasks(bot: Bot) -> None:
     scheduler.add_job(savmes.perform_message_actions, "interval", (bot,), seconds=CHECK_FOR_NEW_MESSAGES_TIMEOUT)
     scheduler.add_job(savmes.delete_deprecated_messages, "interval", (bot,), seconds=CHECK_FOR_DEPRECATED_MESSAGES_TIMEOUT)
     scheduler.add_job(notifications.process_notifications, "interval", (bot,), seconds=CHECK_FOR_NOTIFICATIONS)
     scheduler.start()
+
+scheduler = AsyncIOScheduler()
 
 
 async def main():
@@ -108,11 +58,8 @@ async def main():
 
     logger.info("Start bot...")
     bot = Bot(token=TOKEN)
+    await create_periodic_tasks(bot)
 
-    loop = asyncio.get_event_loop()
-    await create_periodic_tasks(loop, bot)
-
-    #main_router.include_router(pass_form_router)
     main_router.include_router(savmes.router)
 
     dp = Dispatcher()
