@@ -3,7 +3,7 @@ import os
 from dataclasses import dataclass, field
 from typing import Any, Awaitable, Callable, Optional
 
-from aiogram import BaseMiddleware
+from aiogram import BaseMiddleware, Bot
 from aiogram.types import Message
 from settings import ALLOWED_USERS, DATA_DIRECTORY_ROOT
 
@@ -84,3 +84,18 @@ def create_directory(directory_name: str) -> AppResult:
 
 def get_directory_path(directory_path: str) -> os.PathLike:
     return os.path.join(DATA_DIRECTORY_ROOT, directory_path)
+
+
+async def save_file(bot: Bot, file_id: str, file_name: str, dir_name: str) -> AppResult:
+    dir_path = os.path.join(DATA_DIRECTORY_ROOT, dir_name)
+    if not os.path.exists(dir_path):
+        os.mkdir(dir_path)
+
+    file_path = os.path.join(dir_path, file_name)
+    try:
+        await bot.download(file_id, file_path)
+    except Exception as exc:
+        logger.error(exc)
+        return AppResult(False, exc)
+
+    return AppResult()

@@ -14,9 +14,6 @@ assert os.path.isdir(DATA_DIRECTORY_ROOT), f"DATA_DIRECTORY_ROOT doesn't exists:
 
 TOKEN = config("BOT_TOKEN")
 
-#OTP_SECRET_KEY = config("OTP_SECRET_KEY", default="")
-#PASS_STORE_DIR = config("PASS_STORE_DIR", default="")
-
 MONGO_DB_HOST = config("MONGO_DB_HOST", default="localhost")
 MONGO_DB_PORT = config("MONGO_DB_PORT", default=27017, cast=int)
 MONGO_DB_NAME = config("MONGO_DB_NAME", default="cerrrbot_mongo")
@@ -42,13 +39,16 @@ DEFAULT_CHECK_FOR_NEW_MESSAGES_TIMEOUT = config(
 
 DEFAULT_CHECK_FOR_DEPRECATED_MESSAGES_TIMEOUT = config(
     "DEFAULT_CHECK_FOR_DEPRECATED_MESSAGES_TIMEOUT",
-    default=5, cast=int
+    default=60, cast=int
 )
 
 
 PLUGINS_MODULE_NAME = config(
     "PLUGINS_MODULE_NAME", default="plugins"
 )
+
+DEFAULT_CACHE_KEY_PREFIX_NOTIFICATION = config("DEFAULT_CACHE_KEY_PREFIX_NOTIFICATION", default="cerrrbot_notification")
+
 
 PLUGINS_DIR_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), PLUGINS_MODULE_NAME)
 assert os.path.isdir(PLUGINS_DIR_PATH), f"PLUGINS_DIR_PATH doesn't exists: {PLUGINS_DIR_PATH}"

@@ -9,11 +9,10 @@ from typing import Any, Dict, Optional, Sequence, Tuple
 import models
 from aiogram.types import Message
 from common import AppResult
-from message_action import MessageAction
-from models import MessagesBaseCollection, NewMessagesCollection, SavedMessagesCollection
+from models import MessageAction, MessagesBaseCollection, NewMessagesCollection, SavedMessagesCollection
 
 from .actions import MessageActions
-from .common import SVM_MsgdocInfo
+from .message_document_info import SVM_MsgdocInfo
 from .constants import COMMON_GROUP_KEY
 
 logger = logging.getLogger("cerrrbot")

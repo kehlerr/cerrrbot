@@ -3,16 +3,15 @@
 import asyncio
 import logging
 
-import savmes
-import notifications
 from aiogram import Bot, Dispatcher, F, Router, types
 from aiogram.filters import Command
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 import models
 from common import CheckUserMiddleware
-from constants import CHECK_FOR_NEW_MESSAGES_TIMEOUT, CHECK_FOR_DEPRECATED_MESSAGES_TIMEOUT, CHECK_FOR_NOTIFICATIONS, Action, UserAction
+from constants import CHECK_FOR_NEW_MESSAGES_TIMEOUT, CHECK_FOR_DEPRECATED_MESSAGES_TIMEOUT, CHECK_FOR_NOTIFICATIONS
 from repositories import db
+from services import savmes, notifications
 from settings import TOKEN
 
 logger = logging.getLogger("cerrrbot")
@@ -26,9 +25,6 @@ logger.addHandler(log_handler_stream)
 
 
 main_router = Router()
-main_router.callback_query.register(
-    UserAction.filter(F.action.in_({Action.nav_prev, Action.nav_next})),
-)
 main_router.message.middleware(CheckUserMiddleware())
 
 

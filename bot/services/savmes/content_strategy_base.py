@@ -4,12 +4,12 @@ from typing import Any, Dict, List, Optional
 from aiogram.types import Message
 
 from common import AppResult
-from message_action import MessageAction
+from models import MessageAction
 from models import NewMessagesCollection
 from settings import TIMEOUT_BEFORE_PERFORMING_DEFAULT_ACTION
 
 from .actions import MessageActions
-from .common import SVM_MsgdocInfo, SVM_ReplyInfo
+from .message_document_info import SVM_MsgdocInfo, SVM_ReplyInfo
 from .constants import COMMON_GROUP_KEY
 from .message_document import MessageDocument
 from .message_parser import MessageParser

@@ -13,7 +13,7 @@ from aiogram.types import (
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from constants import CUSTOM_MESSAGE_MIN_ORDER
-from message_action import MessageAction
+from models import MessageAction
 from .actions import MessageActions
 from .api import add_new_message, get_messages_to_perform_actions, perform_message_action, get_deprecated_messages
 from .content_strategies import cls_strategy_by_content_type, ContentStrategy

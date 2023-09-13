@@ -4,10 +4,10 @@ from importlib import import_module
 
 from settings import DELETE_TIMEOUT_1, DELETE_TIMEOUT_2, DELETE_TIMEOUT_3, PLUGINS_MODULE_NAME, PLUGINS_DIR_PATH
 
-from message_action import MessageAction
+from models import MessageAction
 
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("cerrrbot")
 
 
 class MESSAGE_ACTIONS:

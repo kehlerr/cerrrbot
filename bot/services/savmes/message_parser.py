@@ -1,5 +1,5 @@
 from .actions import MessageActions
-from .common import SVM_MsgdocInfo
+from .message_document_info import SVM_MsgdocInfo
 
 
 class MessageParser:

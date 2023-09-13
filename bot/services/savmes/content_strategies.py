@@ -7,12 +7,12 @@ from aiogram.types import ContentType
 from celery import signature, states
 from celery.result import AsyncResult as CeleryTaskResult
 
-from common import AppResult
-from message_action import CustomMessageAction
+from common import AppResult, save_file
+from models import CustomMessageAction
 from tasks import app
 
 from .actions import MessageActions
-from .common import SVM_MsgdocInfo, SVM_ReplyInfo, save_file
+from .message_document_info import SVM_MsgdocInfo, SVM_ReplyInfo
 from .constants import COMMON_GROUP_KEY, MAX_LOAD_FILE_SIZE
 from .content_strategy_base import ContentStrategyBase
 from .message_document import MessageDocument
