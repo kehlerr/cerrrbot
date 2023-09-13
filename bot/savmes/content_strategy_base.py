@@ -1,10 +1,11 @@
 import logging
 from typing import Any, Dict, List, Optional
 
-import db_utils as db
 from aiogram.types import Message
+
 from common import AppResult
 from message_action import MessageAction
+from models import NewMessagesCollection
 from settings import TIMEOUT_BEFORE_PERFORMING_DEFAULT_ACTION
 
 from .actions import MessageActions
@@ -29,7 +30,7 @@ class ContentStrategyBase:
     async def add_new_message(cls, message: Message) -> AppResult:
         message_data = message.dict(exclude_none=True, exclude_defaults=True)
         logger.info("Adding message: {}".format(message_data))
-        add_result = db.NewMessagesCollection.add_document(message_data)
+        add_result = NewMessagesCollection.add_document(message_data)
         if add_result:
             added_message_id = add_result.data["_id"]
             logger.info("Saved new message with _id:[{}]".format(str(added_message_id)))
@@ -51,7 +52,7 @@ class ContentStrategyBase:
     def _prepare_message_info(cls, message_data: Dict[str, Any]) -> SVM_MsgdocInfo:
         message_info = SVM_MsgdocInfo(action=cls.DEFAULT_ACTION)
         common_group_id = message_data.get(COMMON_GROUP_KEY)
-        if not common_group_id or not db.NewMessagesCollection.exists_document_in_group(
+        if not common_group_id or not NewMessagesCollection.exists_document_in_group(
             COMMON_GROUP_KEY, common_group_id
         ):
             message_info.actions = {action.code: {} for action in cls.POSSIBLE_ACTIONS}

@@ -3,16 +3,16 @@
 import asyncio
 import logging
 
-import db_utils
 import savmes
 import notifications
 from aiogram import Bot, Dispatcher, F, Router, types
 from aiogram.filters import Command
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-from common import CheckUserMiddleware, navigate_content
+import models
+from common import CheckUserMiddleware
 from constants import CHECK_FOR_NEW_MESSAGES_TIMEOUT, CHECK_FOR_DEPRECATED_MESSAGES_TIMEOUT, CHECK_FOR_NOTIFICATIONS, Action, UserAction
-from keyboards import Keyboards as kbs
+from repositories import db
 from settings import TOKEN
 
 logger = logging.getLogger("cerrrbot")
@@ -27,7 +27,6 @@ logger.addHandler(log_handler_stream)
 
 main_router = Router()
 main_router.callback_query.register(
-    navigate_content,
     UserAction.filter(F.action.in_({Action.nav_prev, Action.nav_next})),
 )
 main_router.message.middleware(CheckUserMiddleware())
@@ -49,10 +48,10 @@ scheduler = AsyncIOScheduler()
 
 async def main():
     logger.debug("Checking db...")
-    db_info = db_utils.check_connection()
+    db_info = db.check_connection()
     if db_info:
         logger.debug("Got db:{}".format(db_info))
-        db_utils.init_db()
+        db.init(models.collections)
     else:
         logger.error("DB is down")
 

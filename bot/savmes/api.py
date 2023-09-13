@@ -2,10 +2,11 @@ import logging
 from datetime import datetime
 from typing import Optional, List
 
-import db_utils as db
 from aiogram import Bot
 from aiogram.types import Message
+
 from common import AppResult
+from models import NewMessagesCollection
 
 from .actions import MessageActions
 from .constants import MESSAGE_DOCUMENT_TTL
@@ -22,7 +23,7 @@ def get_messages_to_perform_actions() -> List[MessageDocument]:
             "$gt": 0,
         }
     }
-    messages = db.NewMessagesCollection.get_documents_by_filter(filter_search)
+    messages = NewMessagesCollection.get_documents_by_filter(filter_search)
     logger.debug("Found {} messages to perform action".format(len(messages)))
     return messages
 
@@ -34,7 +35,7 @@ def get_deprecated_messages() -> List[MessageDocument]:
             "$gte": 0,
         }
     }
-    messages = db.NewMessagesCollection.get_documents_by_filter(filter_search)
+    messages = NewMessagesCollection.get_documents_by_filter(filter_search)
     logger.debug("Found {} deprecated messages".format(len(messages)))
     return messages
 

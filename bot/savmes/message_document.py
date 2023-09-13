@@ -6,10 +6,11 @@ from dataclasses import asdict
 from datetime import datetime
 from typing import Any, Dict, Optional, Sequence, Tuple
 
-import db_utils as db
+import models
 from aiogram.types import Message
 from common import AppResult
 from message_action import MessageAction
+from models import MessagesBaseCollection, NewMessagesCollection, SavedMessagesCollection
 
 from .actions import MessageActions
 from .common import SVM_MsgdocInfo
@@ -36,7 +37,7 @@ class MessageDocument(Message):
         self.cb_message_info = from_dict(data_class=SVM_MsgdocInfo, data=cb_message_info)
 
     def add_to_collection(
-        self, collection: Optional[db.CollectionModel] = db.SavedMessagesCollection
+        self, collection: Optional[MessagesBaseCollection] = SavedMessagesCollection
     ) -> AppResult:
         if self.collection == collection:
             return AppResult(
@@ -65,7 +66,7 @@ class MessageDocument(Message):
 
         return (
             MessageDocument(md["_id"])
-            for md in db.NewMessagesCollection.get_documents_by_filter(filter_search)
+            for md in NewMessagesCollection.get_documents_by_filter(filter_search)
         )
 
     def delete(self) -> AppResult:
@@ -138,8 +139,7 @@ class MessageDocument(Message):
         return self.from_user.id, self.from_user.username
 
     def _fetch_document_data(self, document_id):
-        collections = {db.NewMessagesCollection, db.SavedMessagesCollection}
-        for collection in collections:
+        for collection in models.collections:
             message_data = collection.get_document(document_id)
             if message_data:
                 message_data["_id"] = document_id
@@ -153,6 +153,6 @@ class MessageDocument(Message):
         document_message_id: str, action_message_id
     ) -> AppResult:
         db_key = "cb_message_info.reply_action_message_id"
-        return db.NewMessagesCollection.update_document(
+        return NewMessagesCollection.update_document(
             document_message_id, {db_key: action_message_id}
         )
