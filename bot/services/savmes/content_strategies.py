@@ -9,7 +9,7 @@ from celery.result import AsyncResult as CeleryTaskResult
 
 from common import AppResult, save_file
 from models import CustomMessageAction
-from tasks import app
+from celery_app import app
 
 from .actions import MessageActions
 from .message_document_info import SVM_MsgdocInfo, SVM_ReplyInfo

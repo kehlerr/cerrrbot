@@ -1,0 +1,42 @@
+version: '3.9'
+
+services:
+  redis:
+    image: redis:alpine
+    container_name: "${CERRRBOT_REDIS_CONTAINER_NAME}"
+    ports:
+      - "${CERRRBOT_REDIS_PORT}:${CERRRBOT_REDIS_PORT}"
+    networks:
+      cerrrbot_app_network:
+        aliases:
+          - "${CERRRBOT_REDIS_HOST}"
+    command: --port "${CERRRBOT_REDIS_PORT}"
+    healthcheck:
+      test: [ "CMD", "redis-cli", "-p", "${CERRRBOT_REDIS_PORT}", "ping" ]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+  mongo:
+    image: mongo:4.4.18
+    container_name: "${CERRRBOT_MONGO_CONTAINER_NAME}"
+    volumes:
+      - "${CERRRBOT_MONGO_CONTAINER_VOLUME_DATA_DIR_PATH}:/data/db/"
+    ports:
+      - "${CERRRBOT_MONGO_PORT}:${CERRRBOT_MONGO_PORT}"
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongo localhost:${CERRRBOT_MONGO_PORT}/test --quiet
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    command: mongod --port "${CERRRBOT_MONGO_PORT}"
+    networks:
+      cerrrbot_app_network:
+        aliases:
+          - "${CERRRBOT_MONGO_HOST}"
+
+networks:
+  cerrrbot_app_network:
+    external: true
+    driver: bridge

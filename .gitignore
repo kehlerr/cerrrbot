@@ -7,3 +7,6 @@ logs/*
 
 # bot downloads, apps data, etc
 appdata/
+
+# docker files
+dev.env

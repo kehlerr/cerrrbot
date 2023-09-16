@@ -1,0 +1,17 @@
+version: '3.9'
+
+services:
+  app_base:
+    image: cerrrbot_app
+    build:
+      context: ../
+      dockerfile: "${DOCKERFILE_PATH}"
+    volumes:
+      - "${APP_CONTAINER_VOLUME_DATA_DIR_PATH}:${DATA_DIR_PATH}"
+    networks:
+      - "${CERRRBOT_NETWORK_NAME}"
+
+networks:
+  cerrrbot_app_network:
+    external: true
+    driver: bridge

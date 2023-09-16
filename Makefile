@@ -20,3 +20,11 @@ clean:
 
 deploydev:
 	docker-compose up --force-recreate --no-deps --build
+
+# Builder docker images
+.PHONY: docker-build
+dc_build:
+	@docker-compose -f docker/docker-compose-app.yml build
+
+dc_up:
+	@docker-compose -f ./docker/docker-compose-infra.yml -f ./docker/docker-compose-app.yml --env-file=./docker/dev.env  up

@@ -1,0 +1,28 @@
+version: '3.9'
+
+services:
+  app-bot:
+    image: "${APP_IMAGE_NAME}"
+    container_name: "${APP_INSTANCE_CONTAINER_NAME}"
+    extends:
+      file: docker-compose-base.yml
+      service: app_base
+    depends_on:
+      mongo:
+        condition: service_healthy
+    env_file:
+      - "${ENV_FILE}"
+    command: bash -c "python main.py"
+    restart: on-failure:15
+  app-celery-worker:
+    image: "${APP_IMAGE_NAME}"
+    container_name: "${APP_CELERY_WORKER_CONTAINER_NAME}"
+    extends:
+      file: docker-compose-base.yml
+      service: app_base
+    depends_on:
+      redis:
+        condition: service_healthy
+    env_file:
+      - "${ENV_FILE}"
+    command: "celery -A celery_app.app worker --loglevel=DEBUG"
