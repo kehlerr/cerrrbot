@@ -10,8 +10,6 @@ services:
     depends_on:
       mongo:
         condition: service_healthy
-    env_file:
-      - "${ENV_FILE}"
     command: bash -c "python main.py"
     restart: on-failure:15
   app-celery-worker:
@@ -23,6 +21,4 @@ services:
     depends_on:
       redis:
         condition: service_healthy
-    env_file:
-      - "${ENV_FILE}"
     command: "celery -A celery_app.app worker --loglevel=DEBUG"

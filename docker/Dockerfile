@@ -18,11 +18,10 @@ ENV PYTHONUNBUFFERED 1
 RUN apt update -y
 RUN apt install -y curl ffmpeg
 
-# Create directory for the cerrrbot_admin user
-ENV USER=cerrrbot_admin
+# Create directory for the app user
+ENV USER=app
 ENV HOME=/home/$USER
 RUN mkdir -p $HOME
-WORKDIR $HOME
 
 # Create directory for the bot data
 ENV DATA_DIR_NAME=data
@@ -34,9 +33,8 @@ ENV APP_DIR=bot
 ENV APP_HOME=${HOME}/${APP_DIR}
 
 # Copy source code to home
-COPY $APP_DIR $APP_HOME
-
-# Copy settings
+WORKDIR ${APP_HOME}
+COPY $APP_DIR .
 COPY .env .
 
 # Install Requirements
@@ -48,5 +46,3 @@ RUN pip install --no-cache /wheels/*
 RUN groupadd $USER && useradd -g $USER $USER
 RUN chown -R $USER:$USER $HOME
 USER $USER
-
-WORKDIR ${APP_HOME}
