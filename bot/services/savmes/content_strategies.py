@@ -36,7 +36,7 @@ class ContentStrategy(ContentStrategyBase):
             logger.error(f"Action method not found:{action.method}")
             return AppResult(False)
 
-        logger.debug(f"Performing action: {action_code} with method: {action.method}")
+        logger.info(f"Performing action: {action_code} with method: {action.method}")
         result = await action_method(msgdoc, bot, **action.method_args)
         if result:
             cls._prepare_reply_info(msgdoc.cb_message_info, result.data)

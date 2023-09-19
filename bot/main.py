@@ -12,10 +12,10 @@ from common import CheckUserMiddleware
 from constants import CHECK_FOR_NEW_MESSAGES_TIMEOUT, CHECK_FOR_DEPRECATED_MESSAGES_TIMEOUT, CHECK_FOR_NOTIFICATIONS
 from repositories import db
 from services import savmes, notifications
-from settings import TOKEN
+from settings import TOKEN, LOGGING_LEVEL
 
 logger = logging.getLogger("cerrrbot")
-logger.setLevel(logging.DEBUG)
+logger.setLevel(LOGGING_LEVEL)
 log_handler_stream = logging.StreamHandler()
 formatter = logging.Formatter(
     "[%(levelname)s][%(asctime)s] %(message)s", "%m/%d/%Y-%H:%M:%S"
@@ -43,10 +43,10 @@ scheduler = AsyncIOScheduler()
 
 
 async def main():
-    logger.debug("Checking db...")
+    logger.info("Checking db...")
     db_info = db.check_connection()
     if db_info:
-        logger.debug("Got db:{}".format(db_info))
+        logger.info("Got db:{}".format(db_info))
         db.init(models.collections)
     else:
         logger.error("DB is down")

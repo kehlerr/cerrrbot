@@ -3,7 +3,15 @@ import os
 from decouple import config
 
 DEBUG = config("CERRRBOT_DEBUG", default=False, cast=bool)
-SCHEME = "http" if DEBUG else "https"
+SCHEME = config(
+    "CERRRBOT_HTTP_SCHEME",
+    default="http" if DEBUG else "https"
+).lower()
+LOGGING_LEVEL = config(
+    "CERRRBOT_LOGGING_LEVEL",
+    default="DEBUG" if DEBUG else "INFO"
+).upper()
+
 
 ALLOWED_USERS = config(
     "ALLOWED_USERS", cast=lambda v: [int(s.strip()) for s in v.split(",") if s], default=""
@@ -27,19 +35,18 @@ REDIS_NOTIFICATIONS_DB_IDX = config("CERRRBOT_REDIS_BACKEND_DB_IDX", default=2, 
 DELETE_TIMEOUT_1 = config("DELETE_TIMEOUT_1", default=15, cast=int)
 DELETE_TIMEOUT_2 = config("DELETE_TIMEOUT_2", default=30, cast=int)
 DELETE_TIMEOUT_3 = config("DELETE_TIMEOUT_3", default=45, cast=int)
-DELETE_TIMEOUT_4 = config("DELETE_TIMEOUT_4", default=60, cast=int)
 TIMEOUT_BEFORE_PERFORMING_DEFAULT_ACTION = config(
-    "TIMEOUT_BEFORE_PERFORMING_DEFAULT_ACTION", default=5, cast=int
+    "TIMEOUT_BEFORE_PERFORMING_DEFAULT_ACTION", default=10, cast=int
 )
 
 DEFAULT_CHECK_FOR_NEW_MESSAGES_TIMEOUT = config(
     "DEFAULT_CHECK_FOR_NEW_MESSAGES_TIMEOUT",
-    default=5, cast=int
+    default=3, cast=int
 )
 
 DEFAULT_CHECK_FOR_DEPRECATED_MESSAGES_TIMEOUT = config(
     "DEFAULT_CHECK_FOR_DEPRECATED_MESSAGES_TIMEOUT",
-    default=60, cast=int
+    default=10, cast=int
 )
 
 

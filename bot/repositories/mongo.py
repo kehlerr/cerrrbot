@@ -18,7 +18,7 @@ def init(collections: Iterable):
     db = get_mongo_db()
     existing_collections = db.list_collection_names()
     if existing_collections:
-        logger.warning(
+        logger.info(
             "DB already initialized with next collections:{}".format(existing_collections)
         )
         return

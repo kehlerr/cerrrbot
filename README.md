@@ -72,13 +72,13 @@ cd cerrrbot/
 ## Configuration
 You can find an example of the configuration in the `sample.env` and `bot/settings.py` files. Most variables are self-explanatory; however, here are explanations for some of them:
 - `ALLOWED_USERS` - a list of user IDs permitted to send messages to the bot. Must contain at least one user ID;
-- `DELETE_TIMEOUT_1`, `DELETE_TIMEOUT_2`, `DELETE_TIMEOUT_3`, `DELETE_TIMEOUT_4` - four options for delayed message deletion, see [Usage section](#usage) below about it.
+- `DELETE_TIMEOUT_1`, `DELETE_TIMEOUT_2`, `DELETE_TIMEOUT_3` - 3 options for delayed message deletion, see [Usage section](#usage) below about it.
 - `TIMEOUT_BEFORE_PERFORMING_DEFAULT_ACTION` -  a timeout before executing automatic default actions, see [Usage section](#usage) below about it;
 - `DEFAULT_CACHE_KEY_PREFIX_NOTIFICATION` - prefix for keys in Redis used to select rows for sending notifications.
 
 ## Usage
 ### Sending Text Messages
-When you send or forward some message with text only, Bot will reply on this message with message with menu  so-called *reply-message*. You can choose to just `Keep` the message in the chat or press the `Delete` button and select when the message will be deleted: immediately or after a specific time (defined in variables `DELETE_TIMEOUT_2`, `DELETE_TIMEOUT_3`, `DELETE_TIMEOUT_4`). If no action is taken, the message will be deleted after the time specified in `DELETE_TIMEOUT_1`. In both cases of deletion (automatic or custom), the bot's reply-message will also be deleted.
+When you send or forward some message with text only, Bot will reply on this message with message with menu  so-called *reply-message*. You can choose to just `Keep` the message in the chat or press the `Delete` button and select when the message will be deleted: immediately or after a specific time (defined in variables `DELETE_TIMEOUT_1`, `DELETE_TIMEOUT_2`, `DELETE_TIMEOUT_3`). If no action is taken, the message will be deleted after the time specified in `DELETE_TIMEOUT_1`. In both cases of deletion (automatic or custom), the bot's reply-message will also be deleted.
 
 ### Sending Messages with Media
 When you send or forward message with media content (video, image, GIF, audio, file, voicemessage and videomessage), a `Download` button will be added to the *reply-message*. If the message contains multiple media items (so-called *group of medias*), a `Download all` button will be provided for downloading all items in the group, but if you press `Download`, the first media will be download only. All downloads will be stored in directory, specified in `DATA_DIR_PATH` variable.

@@ -31,7 +31,7 @@ class MessageDocument(Message):
         try:
             cb_message_info = self.cb_message_info
         except AttributeError as exc:
-            logger.warning(f"Empty message info: {exc}")
+            logger.debug(f"Empty message info: {exc}")
             cb_message_info = {}
         self.cb_message_info = from_dict(data_class=SVM_MsgdocInfo, data=cb_message_info)
 
