@@ -64,7 +64,7 @@ cd cerrrbot/
 
 ### Running with Docker
 1. For the first time create docker network:
-`docker network create cerrrbot_app_network`
+`docker network create cerrrbot-network`
 2. Copy `sample.env` file to `.env`:
 `make copy_env`
 3. Edit the `.env` file to configure bot (see [Configuration section](#configuration) below) and ensure the `BOT_TOKEN` variable is set with your bot's token and `ALLOWED_USERS` filled with at least one *Telegram User ID*.

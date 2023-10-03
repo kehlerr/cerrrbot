@@ -7,7 +7,7 @@ services:
     ports:
       - "${CERRRBOT_REDIS_PORT}:${CERRRBOT_REDIS_PORT}"
     networks:
-      cerrrbot_app_network:
+      cerrrbot-network:
         aliases:
           - "${CERRRBOT_REDIS_HOST}"
     command: --port "${CERRRBOT_REDIS_PORT}"
@@ -32,11 +32,11 @@ services:
       start_period: 5s
     command: mongod --port "${CERRRBOT_MONGO_PORT}"
     networks:
-      cerrrbot_app_network:
+      cerrrbot-network:
         aliases:
           - "${CERRRBOT_MONGO_HOST}"
 
 networks:
-  cerrrbot_app_network:
+  cerrrbot-network:
     external: true
     driver: bridge

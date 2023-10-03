@@ -9,11 +9,11 @@ services:
     volumes:
       - "${APP_CONTAINER_VOLUME_DATA_DIR_PATH}:${DATA_DIR_PATH}"
     networks:
-      - "${CERRRBOT_NETWORK_NAME}"
+      - cerrrbot-network
     env_file:
       - "${ENV_FILE}"
 
 networks:
-  cerrrbot_app_network:
+  cerrrbot-network:
     external: true
     driver: bridge
