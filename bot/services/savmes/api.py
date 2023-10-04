@@ -1,12 +1,12 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional, List
 
 from aiogram import Bot
 from aiogram.types import Message
 
 from common import AppResult
-from models import NewMessagesCollection
+from models import NewMessagesCollection, SavedMessagesCollection
 
 from .actions import MessageActions
 from .constants import MESSAGE_DOCUMENT_TTL
@@ -30,13 +30,13 @@ def get_messages_to_perform_actions() -> List[MessageDocument]:
 
 def get_deprecated_messages() -> List[MessageDocument]:
     filter_search = {
-        "cb_message_info.perform_action_at": {
-            "$lt": int(datetime.now().timestamp()) - MESSAGE_DOCUMENT_TTL,
-            "$gte": 0,
+        "date": {
+            "$lte": datetime.utcnow() - timedelta(seconds=MESSAGE_DOCUMENT_TTL),
         }
     }
-    messages = NewMessagesCollection.get_documents_by_filter(filter_search)
-    logger.debug("Found {} deprecated messages".format(len(messages)))
+    messages = SavedMessagesCollection.get_documents_by_filter(filter_search)
+    messages.extend(NewMessagesCollection.get_documents_by_filter(filter_search))
+    logger.info("Found {} deprecated messages".format(len(messages)))
     return messages
 
 
