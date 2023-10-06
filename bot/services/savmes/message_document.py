@@ -46,9 +46,7 @@ class MessageDocument(Message):
                 ),
             )
 
-        dict_obj = self.dict(
-            exclude_none=True, exclude_defaults=True, exclude={"collection"}
-        )
+        dict_obj = self.json_dict()
         add_result = collection.add_document(dict_obj)
         if add_result:
             self.collection = collection
@@ -69,10 +67,16 @@ class MessageDocument(Message):
         )
 
     def delete(self) -> AppResult:
+        logger.info(f"delete document: id:{self._id}, collection: {self.collection}")
         delete_result = self.collection.del_document(self._id)
         if delete_result:
             self.collection = None
         return delete_result
+
+    def json_dict(self) -> dict[str, Any]:
+        return self.dict(
+            exclude_none=True, exclude_defaults=True, exclude={"collection"}
+        )
 
     def dict(self, *args, **kwargs):
         dict_obj = super().dict(*args, **kwargs)
@@ -117,7 +121,7 @@ class MessageDocument(Message):
             self._id, {"cb_message_info": updated_message_info}
         )
 
-    def _get_dumped_message_info(self):
+    def _get_dumped_message_info(self) -> dict:
         return asdict(self.cb_message_info)
 
     @property

@@ -36,7 +36,7 @@ def get_deprecated_messages() -> List[MessageDocument]:
     }
     messages = SavedMessagesCollection.get_documents_by_filter(filter_search)
     messages.extend(NewMessagesCollection.get_documents_by_filter(filter_search))
-    logger.info("Found {} deprecated messages".format(len(messages)))
+    logger.debug("Found {} deprecated messages".format(len(messages)))
     return messages
 
 

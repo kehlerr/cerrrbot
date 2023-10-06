@@ -10,4 +10,5 @@ COMMON_GROUP_KEY: str = "media_group_id"
 
 MAX_LOAD_FILE_SIZE: int = 20000000
 
-MESSAGE_DOCUMENT_TTL: int = 2*24*60*60 - 1
+# bot cannot operate with any message that sent more than 48h ago
+MESSAGE_DOCUMENT_TTL: int = 48*60*60 - 60*60

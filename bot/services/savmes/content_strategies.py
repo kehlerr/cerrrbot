@@ -69,7 +69,7 @@ class ContentStrategy(ContentStrategyBase):
             return cls._update_actions(msgdoc, (action,))
 
         try:
-            result = task_signature.delay(task_args)
+            result = task_signature.delay(task_args, msgdoc.json_dict())
             task_id = str(result)
             task_status = CeleryTaskResult(task_id, app=app).status
         except Exception as exc:
