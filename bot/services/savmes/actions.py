@@ -56,13 +56,8 @@ class MESSAGE_ACTIONS:
     BY_CODE = {action.code: action for action in _DEFAULT_ACTIONS}
     CUSTOM_ACTION_BY_CODE = {}
 
-    def __init__(self):
-        self._load_custom_actions()
-        logger.info("Loaded actions: {}".format(self.BY_CODE))
-
-    def _load_custom_actions(self) -> None:
-        from plugins_manager import plugins_manager
-        for action in plugins_manager.get_actions():
+    def load_custom_actions(self, actions: list[MessageAction]) -> None:
+        for action in actions:
             assert action.code not in self.BY_CODE, f"Duplicated actions can't be loaded: {action.code}"
             self.BY_CODE[action.code] = action
             self.CUSTOM_ACTION_BY_CODE[action.code] = action

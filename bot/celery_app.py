@@ -15,5 +15,4 @@ app = Celery(
     backend=f"redis://{REDIS_HOST}:{REDIS_PORT}/{REDIS_BACKEND_DB_IDX}"
 )
 
-for task_cls in plugins_manager.get_tasks():
-    app.register_task(task_cls)
+plugins_manager.load_tasks(app)

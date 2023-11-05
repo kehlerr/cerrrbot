@@ -1,5 +1,6 @@
 from aiogram import Router, types
 from aiogram.filters import Command
+from plugins_manager import plugins_manager
 
 commands_router = Router()
 
@@ -10,7 +11,6 @@ async def main_menu(message: types.Message) -> None:
 
 
 def load_commands(main_router: Router) -> None:
-    from plugins_manager import plugins_manager
     for plugin_commands_router in plugins_manager.get_commands_routers():
         commands_router.include_router(plugin_commands_router)
     main_router.include_router(commands_router)

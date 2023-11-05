@@ -6,7 +6,6 @@ from aiogram import Bot
 from aiogram.types import ContentType
 from celery import signature, states
 from celery.result import AsyncResult as CeleryTaskResult
-from celery_app import app
 from common import AppResult, save_file
 from models import (
     COMMON_GROUP_KEY,
@@ -75,7 +74,7 @@ class ContentStrategy(ContentStrategyBase):
         try:
             result = task_signature.delay()
             task_id = str(result)
-            task_status = CeleryTaskResult(task_id, app=app).status
+            task_status = CeleryTaskResult(task_id).status
         except Exception as exc:
             logger.exception(exc)
             return AppResult(False)
@@ -91,7 +90,7 @@ class ContentStrategy(ContentStrategyBase):
     def _get_task_reply(
         cls, task_id: str, action: CustomMessageAction, msgdoc: MessageDocument
     ) -> AppResult:
-        task_result = CeleryTaskResult(task_id, app=app)
+        task_result = CeleryTaskResult(task_id)
         status = task_result.status
         reply_info = SVM_ReplyInfo(popup_text=status)
         if status == states.SUCCESS:
