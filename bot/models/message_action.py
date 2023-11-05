@@ -1,4 +1,5 @@
 import re
+from httpx import URL
 from typing import Any
 
 from constants import CUSTOM_MESSAGE_MIN_ORDER
@@ -28,11 +29,8 @@ class CustomMessageAction(MessageAction):
         data["method_args"]["code"] = data["code"]
         super().__init__(**data)
 
-    def parse(self, text: str, links: list[str]) -> list[str]:
-        parsed_data = []
-        if self.method_args.get("parse_text_links"):
-            parsed_data = list(links)
-
+    def parse(self, text: str, links: tuple[URL]) -> list[str]:
+        parsed_data = self._parse_links(links) or []
         regex_pattern = self.method_args.get("regex")
         if not regex_pattern:
             return parsed_data
@@ -47,5 +45,19 @@ class CustomMessageAction(MessageAction):
                 parsed_data.append(parsed)
         return parsed_data
 
+    def _parse_links(self, all_links: tuple[URL]) -> list[str] | None:
+        if not all_links or not self.method_args.get("parse_links", False):
+            return None
+
+        allowed_hosts = self.method_args.get("allowed_hosts")
+        if allowed_hosts is None:
+            return [str(url) for url in all_links]
+
+        links = []
+        for link in all_links:
+            host = link.host and link.host.split("www.")[-1] or None
+            if host and host in allowed_hosts:
+                links.append(str(link))
+        return links
 
 MESSAGE_ACTION_NONE = MessageAction(code="NONE", caption="", order=0, method="")
