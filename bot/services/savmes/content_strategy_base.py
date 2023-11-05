@@ -2,16 +2,18 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from aiogram.types import Message
-
 from common import AppResult
-from models import MessageAction
-from models import NewMessagesCollection
+from models import (
+    COMMON_GROUP_KEY,
+    MessageAction,
+    MessageDocument,
+    NewMessagesCollection,
+    SVM_MsgdocInfo,
+    SVM_ReplyInfo,
+)
 from settings import TIMEOUT_BEFORE_PERFORMING_DEFAULT_ACTION
 
 from .actions import MessageActions
-from .message_document_info import SVM_MsgdocInfo, SVM_ReplyInfo
-from .constants import COMMON_GROUP_KEY
-from .message_document import MessageDocument
 from .message_parser import MessageParser
 
 logger = logging.getLogger("cerrrbot")

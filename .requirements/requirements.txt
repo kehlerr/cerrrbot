@@ -7,4 +7,3 @@ apscheduler==3.10.4
 orjson==3.9.7
 python-decouple==3.6
 pyotp==2.7.0
-dacite==1.7.0

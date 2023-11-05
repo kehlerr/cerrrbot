@@ -1,21 +1,25 @@
 from __future__ import annotations
 
 import logging
-from dacite import from_dict
-from dataclasses import asdict
 from datetime import datetime
 from typing import Any, Dict, Optional, Sequence, Tuple
 
 import models
 from aiogram.types import Message
 from common import AppResult
-from models import MessageAction, MessagesBaseCollection, NewMessagesCollection, SavedMessagesCollection
+from models import (
+    MessagesBaseCollection,
+    NewMessagesCollection,
+    SavedMessagesCollection,
+)
 
-from .actions import MessageActions
+from .message_action import MESSAGE_ACTION_NONE, MessageAction
 from .message_document_info import SVM_MsgdocInfo
-from .constants import COMMON_GROUP_KEY
 
 logger = logging.getLogger("cerrrbot")
+
+
+COMMON_GROUP_KEY: str = "media_group_id"
 
 
 class MessageDocument(Message):
@@ -33,7 +37,7 @@ class MessageDocument(Message):
         except AttributeError as exc:
             logger.debug(f"Empty message info: {exc}")
             cb_message_info = {}
-        self.cb_message_info = from_dict(data_class=SVM_MsgdocInfo, data=cb_message_info)
+        self.cb_message_info = SVM_MsgdocInfo(**cb_message_info)
 
     def add_to_collection(
         self, collection: Optional[MessagesBaseCollection] = SavedMessagesCollection
@@ -85,7 +89,7 @@ class MessageDocument(Message):
 
     def update_message_info(
         self,
-        new_action: Optional[MessageAction] = MessageActions.NONE,
+        new_action: Optional[MessageAction] = MESSAGE_ACTION_NONE,
         new_actions: Optional[Dict[str, Any]] = None,
         new_ttl: Optional[int] = None,
         entities: Optional[Dict[str, Any]] = None,
@@ -98,7 +102,7 @@ class MessageDocument(Message):
 
         if new_action is not None:
             self.cb_message_info.action = new_action.code
-            if new_action == MessageActions.NONE:
+            if new_action.code == MESSAGE_ACTION_NONE.code:
                 self.cb_message_info.perform_action_at = 0
 
         if new_actions is not None:
@@ -122,7 +126,7 @@ class MessageDocument(Message):
         )
 
     def _get_dumped_message_info(self) -> dict:
-        return asdict(self.cb_message_info)
+        return self.cb_message_info.dict()
 
     @property
     def message_text(self):

@@ -1,9 +1,8 @@
 import re
 from typing import Any
 
-from pydantic import BaseModel, Field
-
 from constants import CUSTOM_MESSAGE_MIN_ORDER
+from pydantic import BaseModel, Field
 
 
 class MessageAction(BaseModel):
@@ -47,3 +46,6 @@ class CustomMessageAction(MessageAction):
             if parsed:
                 parsed_data.append(parsed)
         return parsed_data
+
+
+MESSAGE_ACTION_NONE = MessageAction(code="NONE", caption="", order=0, method="")

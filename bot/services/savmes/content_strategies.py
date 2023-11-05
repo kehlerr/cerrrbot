@@ -6,16 +6,19 @@ from aiogram import Bot
 from aiogram.types import ContentType
 from celery import signature, states
 from celery.result import AsyncResult as CeleryTaskResult
-
-from common import AppResult, save_file
-from models import CustomMessageAction
 from celery_app import app
+from common import AppResult, save_file
+from models import (
+    COMMON_GROUP_KEY,
+    CustomMessageAction,
+    MessageDocument,
+    SVM_MsgdocInfo,
+    SVM_ReplyInfo,
+)
 
 from .actions import MessageActions
-from .message_document_info import SVM_MsgdocInfo, SVM_ReplyInfo
-from .constants import COMMON_GROUP_KEY, MAX_LOAD_FILE_SIZE
+from .constants import MAX_LOAD_FILE_SIZE
 from .content_strategy_base import ContentStrategyBase
-from .message_document import MessageDocument
 
 logger = logging.getLogger("cerrrbot")
 
@@ -44,7 +47,7 @@ class ContentStrategy(ContentStrategyBase):
         return result
 
     @classmethod
-    async def custom_task(cls, msgdoc: MessageDocument, *args, **task_info) -> AppResult:
+    async def custom_task(cls, msgdoc: MessageDocument, bot: Bot, **task_info) -> AppResult:
         action_code = task_info["code"]
         action = MessageActions.BY_CODE[action_code]
         action_data = msgdoc.cb_message_info.actions[action_code]
@@ -52,7 +55,7 @@ class ContentStrategy(ContentStrategyBase):
         if task_id:
             result = cls._get_task_reply(task_id, action, msgdoc)
         else:
-            result = cls._create_task(task_info, action_data["data"], action, msgdoc)
+            result = cls._create_task(task_info, action_data["data"], action, msgdoc, bot)
         return result
 
     @classmethod
@@ -62,14 +65,15 @@ class ContentStrategy(ContentStrategyBase):
         task_args: dict[str, Any],
         action: CustomMessageAction,
         msgdoc: MessageDocument,
+        bot: Bot
     ) -> AppResult:
-        task_signature = signature(task_info["task_name"])
+        task_signature = signature(task_info["task_name"], task_args, {"msgdoc_id": msgdoc._id})
         if task_info.get("is_instant", False):
-            task_signature(task_args, msgdoc)
+            task_signature()
             return cls._update_actions(msgdoc, (action,))
 
         try:
-            result = task_signature.delay(task_args, msgdoc.json_dict())
+            result = task_signature.delay()
             task_id = str(result)
             task_status = CeleryTaskResult(task_id, app=app).status
         except Exception as exc:
@@ -114,7 +118,7 @@ class ContentStrategy(ContentStrategyBase):
 
     @classmethod
     async def delete_request(cls, msgdoc: MessageDocument, *args, **kwargs) -> AppResult:
-        result = msgdoc.update_message_info(MessageActions.NONE)
+        msgdoc.update_message_info(MessageActions.NONE)
         reply_info = SVM_ReplyInfo(
             actions={
                 MessageActions.DELETE_1,

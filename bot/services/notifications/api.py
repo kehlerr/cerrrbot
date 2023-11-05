@@ -1,11 +1,8 @@
 import logging
 from datetime import datetime
-from math import inf
-
 from uuid import uuid4
 
 from aiogram import Bot
-
 from common import AppResult
 from constants import CACHE_KEY_PREFIX_NOTIFICATION
 from repositories import cache

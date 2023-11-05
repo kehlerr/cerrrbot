@@ -1,17 +1,15 @@
 import logging
 from datetime import datetime, timedelta
-from typing import Optional, List
+from typing import List, Optional
 
 from aiogram import Bot
 from aiogram.types import Message
-
 from common import AppResult
-from models import NewMessagesCollection, SavedMessagesCollection
+from models import MessageDocument, NewMessagesCollection, SavedMessagesCollection
 
 from .actions import MessageActions
 from .constants import MESSAGE_DOCUMENT_TTL
 from .content_strategies import ContentStrategy, cls_strategy_by_content_type
-from .message_document import MessageDocument
 
 logger = logging.getLogger("cerrrbot")
 

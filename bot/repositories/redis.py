@@ -1,7 +1,6 @@
 
 from redis import asyncio as aioredis
-
-from settings import REDIS_HOST, REDIS_PORT, REDIS_NOTIFICATIONS_DB_IDX
+from settings import REDIS_HOST, REDIS_NOTIFICATIONS_DB_IDX, REDIS_PORT
 
 _redis = None
 

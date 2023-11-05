@@ -1,6 +1,7 @@
 from typing import Any
 
 from common import AppResult
+
 from .base import CollectionModel
 
 
