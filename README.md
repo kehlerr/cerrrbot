@@ -140,7 +140,7 @@ In `actions` you have to specify configuration of actions:
 	- `task_name` *str*: this parameter must be specified in order to Celery discovers tasks;
 	- `regex` *str*: regular expression, if message text passed for this value, then button of this action appears;
 	- `is_instant` *Optional[bool]*: if set to `True`, then action will be executed in bot worker, otherwise it will be sent to Celery worker;
-	- `parse_text_links` *Optional[bool]*: if set to `True`, then all *links entities* from message will be passed to task
+	- `parse_links` *Optional[bool]*: if set to `True`, then all links from message will be passed to task
 	- `<...>` *Optional[Any]*: your custom parameters, which will be passed into task.
 
 #### `tasks.py`
