@@ -1,19 +1,14 @@
 import logging
-import os
-from importlib import import_module
 
-from settings import DELETE_TIMEOUT_1, DELETE_TIMEOUT_2, DELETE_TIMEOUT_3, PLUGINS_MODULE_NAME, PLUGINS_DIR_PATH
-
-from models import MessageAction
+from models import MessageAction, MESSAGE_ACTION_NONE
+from settings import DELETE_TIMEOUT_1, DELETE_TIMEOUT_2, DELETE_TIMEOUT_3
 
 
 logger = logging.getLogger("cerrrbot")
 
 
 class MESSAGE_ACTIONS:
-    NONE = MessageAction(
-        code="NONE", caption="", order=0, method=""
-    )
+    NONE = MESSAGE_ACTION_NONE
     DELETE_REQUEST = MessageAction(
         code="DEL", caption="Delete", order=0, method="delete_request"
     )
@@ -67,20 +62,8 @@ class MESSAGE_ACTIONS:
         logger.info("Loaded actions: {}".format(self.BY_CODE))
 
     def _load_custom_actions(self) -> None:
-        loaded_actions = []
-
-        for plugin_name in os.listdir(PLUGINS_DIR_PATH):
-            try:
-                plugin_module = import_module(f"{PLUGINS_MODULE_NAME}.{plugin_name}")
-            except ModuleNotFoundError:
-                continue
-
-            try:
-                loaded_actions.extend(plugin_module.actions)
-            except AttributeError:
-                continue
-
-        for action in loaded_actions:
+        from plugins_manager import plugins_manager
+        for action in plugins_manager.get_actions():
             assert action.code not in self.BY_CODE, f"Duplicated actions can't be loaded: {action.code}"
             self.BY_CODE[action.code] = action
             self.CUSTOM_ACTION_BY_CODE[action.code] = action

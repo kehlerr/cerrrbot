@@ -3,16 +3,19 @@
 import asyncio
 import logging
 
-from aiogram import Bot, Dispatcher, F, Router, types
-from aiogram.filters import Command
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
-
 import models
+from aiogram import Bot, Dispatcher, Router
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from commands import load_commands
 from common import CheckUserMiddleware
-from constants import CHECK_FOR_NEW_MESSAGES_TIMEOUT, CHECK_FOR_DEPRECATED_MESSAGES_TIMEOUT, CHECK_FOR_NOTIFICATIONS
+from constants import (
+    CHECK_FOR_DEPRECATED_MESSAGES_TIMEOUT,
+    CHECK_FOR_NEW_MESSAGES_TIMEOUT,
+    CHECK_FOR_NOTIFICATIONS,
+)
 from repositories import db
-from services import savmes, notifications
-from settings import TOKEN, LOGGING_LEVEL
+from services import notifications, savmes
+from settings import LOGGING_LEVEL, TOKEN
 
 logger = logging.getLogger("cerrrbot")
 logger.setLevel(LOGGING_LEVEL)
@@ -23,14 +26,6 @@ formatter = logging.Formatter(
 log_handler_stream.setFormatter(formatter)
 logger.addHandler(log_handler_stream)
 
-
-main_router = Router()
-main_router.message.middleware(CheckUserMiddleware())
-
-
-@main_router.message(Command(commands=["start", "menu"]))
-async def main_menu(message: types.Message):
-    await message.answer("Welcome, master")
 
 
 async def create_periodic_tasks(bot: Bot) -> None:
@@ -55,6 +50,9 @@ async def main():
     bot = Bot(token=TOKEN)
     await create_periodic_tasks(bot)
 
+    main_router = Router()
+    main_router.message.middleware(CheckUserMiddleware())
+    load_commands(main_router)
     main_router.include_router(savmes.router)
 
     dp = Dispatcher()
