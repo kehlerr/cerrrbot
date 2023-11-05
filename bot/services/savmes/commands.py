@@ -1,6 +1,5 @@
-import orjson as json
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from aiogram import Bot, F, Router
 from aiogram.filters.callback_data import CallbackData
@@ -11,13 +10,17 @@ from aiogram.types import (
     Message,
 )
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-
 from constants import CUSTOM_MESSAGE_MIN_ORDER
-from models import MessageAction
+from models import MessageAction, MessageDocument
+
 from .actions import MessageActions
-from .api import add_new_message, get_messages_to_perform_actions, perform_message_action, get_deprecated_messages
-from .content_strategies import cls_strategy_by_content_type, ContentStrategy
-from .message_document import MessageDocument
+from .api import (
+    add_new_message,
+    get_deprecated_messages,
+    get_messages_to_perform_actions,
+    perform_message_action,
+)
+from .content_strategies import ContentStrategy, cls_strategy_by_content_type
 
 logger = logging.getLogger("cerrrbot")
 
@@ -126,11 +129,7 @@ async def process_performed_action_result(
     await bot.edit_message_reply_markup(chat_id, reply_info.reply_action_message_id, reply_markup=next_markup)
 
 
-def _build_message_actions_menu_kb(
-    reply_actions: List[MessageAction], msgdoc_id: str
-) -> InlineKeyboardMarkup:
-
-    kb_builder = InlineKeyboardBuilder()
+def _build_message_actions_menu_kb(reply_actions: list[MessageAction], msgdoc_id: str) -> InlineKeyboardMarkup:
     actions_buttons = []
     custom_actions_buttons = {}
     for action in reply_actions:
@@ -145,6 +144,8 @@ def _build_message_actions_menu_kb(
             custom_actions_buttons.setdefault(action.order // 100, []).append(button)
         else:
             actions_buttons.append(button)
+
+    kb_builder = InlineKeyboardBuilder()
     kb_builder.row(*actions_buttons)
     for buttons in custom_actions_buttons.values():
         kb_builder.row(*buttons)

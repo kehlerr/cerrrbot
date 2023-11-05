@@ -3,12 +3,10 @@ from typing import Any, Iterable, Optional
 
 import bson
 import pymongo
-from pymongo.errors import ServerSelectionTimeoutError
 from bson.objectid import ObjectId
-from settings import MONGO_DB_HOST, MONGO_DB_NAME, MONGO_DB_PORT
-
 from common import AppResult
-
+from pymongo.errors import ServerSelectionTimeoutError
+from settings import MONGO_DB_HOST, MONGO_DB_NAME, MONGO_DB_PORT
 
 logger = logging.getLogger("cerrrbot")
 

@@ -6,8 +6,6 @@ EXCLUDE_MESSAGE_FIELDS = {
 }
 
 
-COMMON_GROUP_KEY: str = "media_group_id"
-
 MAX_LOAD_FILE_SIZE: int = 20000000
 
 # bot cannot operate with any message that sent more than 48h ago

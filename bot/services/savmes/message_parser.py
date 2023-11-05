@@ -1,5 +1,6 @@
+from models import SVM_MsgdocInfo
+
 from .actions import MessageActions
-from .message_document_info import SVM_MsgdocInfo
 
 
 class MessageParser:

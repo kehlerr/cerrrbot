@@ -1,5 +1,4 @@
-from . import savmes
-from . import notifications
+from . import notifications, savmes
 
 __all__ = (
     "savmes",

@@ -1,1 +1,11 @@
-from .commands import router, perform_message_actions, delete_deprecated_messages  # noqa: F401
+from .commands import (  # noqa: F401
+    delete_deprecated_messages,
+    perform_message_actions,
+    router,
+)
+
+__all__ =(
+    "delete_deprecated_messages",
+    "perform_message_actions",
+    "router"
+)

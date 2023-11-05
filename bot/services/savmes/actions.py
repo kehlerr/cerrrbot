@@ -1,8 +1,7 @@
 import logging
 
-from models import MessageAction, MESSAGE_ACTION_NONE
+from models import MESSAGE_ACTION_NONE, MessageAction
 from settings import DELETE_TIMEOUT_1, DELETE_TIMEOUT_2, DELETE_TIMEOUT_3
-
 
 logger = logging.getLogger("cerrrbot")
 
