@@ -6,6 +6,7 @@ import logging
 import models
 from aiogram import Bot, Dispatcher, Router
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from celery_app import app as _
 from commands import load_commands
 from common import CheckUserMiddleware
 from constants import (
