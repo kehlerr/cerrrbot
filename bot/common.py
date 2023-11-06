@@ -1,3 +1,4 @@
+import re
 import logging
 import os
 from dataclasses import dataclass, field
@@ -99,3 +100,41 @@ async def save_file(bot: Bot, file_id: str, file_name: str, dir_name: str) -> Ap
         return AppResult(False, exc)
 
     return AppResult()
+
+
+def get_seconds_from_time(time_interval: int | float | str) -> float:
+    error_str = f"Invalid time interval: {time_interval}"
+    if not isinstance(time_interval, str):
+        try:
+            return float(time_interval)
+        except ValueError:
+            raise ValueError(error_str)
+
+    try:
+        return float(time_interval)
+    except ValueError:
+        ...
+
+    # Regular expression pattern to match a numerical value and a time unit
+    pattern = r"(\d+)([smhdw])"
+
+    # Define a dictionary to map time units to seconds
+    unit_to_seconds = {
+        "s": 1,       # seconds
+        "m": 60,      # minutes
+        "h": 3600,    # hours
+        "d": 86400,   # days
+        "w": 604800   # weeks
+    }
+
+    total_seconds = 0
+    # Use regular expressions to extract the numerical value and time unit
+    for value, unit in re.findall(pattern, time_interval.lower()):
+        unit_value = unit_to_seconds.get(unit)
+        if not unit_value:
+            raise ValueError(error_str)
+
+        total_seconds += int(value) * unit_value
+
+    # If the input format is invalid, return None or raise an exception
+    return float(total_seconds)
