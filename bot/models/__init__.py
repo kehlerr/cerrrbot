@@ -6,7 +6,6 @@ from .message_action import (
     CustomMessageAction,
     MessageAction,
 )
-from .message_button import MessageButton
 from .message_document import COMMON_GROUP_KEY, MessageDocument
 from .message_document_info import (
     ActionsData,
