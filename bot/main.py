@@ -6,7 +6,7 @@ import logging
 import models
 from aiogram import Bot, Dispatcher, Router
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from celery_app import app as _
+from celery_app import app as _  # noqa: F401
 from commands import load_commands
 from common import CheckUserMiddleware
 from constants import (
@@ -28,12 +28,27 @@ log_handler_stream.setFormatter(formatter)
 logger.addHandler(log_handler_stream)
 
 
-
 async def create_periodic_tasks(bot: Bot) -> None:
-    scheduler.add_job(savmes.perform_message_actions, "interval", (bot,), seconds=CHECK_FOR_NEW_MESSAGES_TIMEOUT)
-    scheduler.add_job(savmes.delete_deprecated_messages, "interval", (bot,), seconds=CHECK_FOR_DEPRECATED_MESSAGES_TIMEOUT)
-    scheduler.add_job(notifications.process_notifications, "interval", (bot,), seconds=CHECK_FOR_NOTIFICATIONS)
+    scheduler.add_job(
+        savmes.perform_message_actions,
+        "interval",
+        (bot,),
+        seconds=CHECK_FOR_NEW_MESSAGES_TIMEOUT,
+    )
+    scheduler.add_job(
+        savmes.delete_deprecated_messages,
+        "interval",
+        (bot,),
+        seconds=CHECK_FOR_DEPRECATED_MESSAGES_TIMEOUT,
+    )
+    scheduler.add_job(
+        notifications.process_notifications,
+        "interval",
+        (bot,),
+        seconds=CHECK_FOR_NOTIFICATIONS,
+    )
     scheduler.start()
+
 
 scheduler = AsyncIOScheduler()
 

@@ -33,7 +33,9 @@ async def process_notifications(bot: Bot):
     async for key in client.scan_iter(CACHE_KEY_PATTERN):
         logger.info(f"Got notification: {key}")
         notification_data = await client.get(key)
-        notification: Notification = Notification.model_load(Notification, notification_data)
+        notification: Notification = Notification.model_load(
+            Notification, notification_data
+        )
 
         if notification.need_send():
             result = await send_notification_message(bot, notification)
@@ -46,7 +48,7 @@ async def process_notifications(bot: Bot):
 async def repeat_push(notification: Notification) -> AppResult:
     new_notificaton = notification.copy_with(
         send_at=int(datetime.utcnow().timestamp()) + notification.repeat_in,
-        send_count=notification.send_count - 1
+        send_count=notification.send_count - 1,
     )
     result = await push_message_notification(new_notificaton)
     return result
@@ -57,7 +59,7 @@ async def send_notification_message(bot: Bot, notification: Notification) -> App
         await bot.send_message(
             chat_id=notification.chat_id,
             text=notification.text,
-            reply_to_message_id=notification.reply_to_message_id
+            reply_to_message_id=notification.reply_to_message_id,
         )
     except Exception as exc:
         logger.exception(exc)

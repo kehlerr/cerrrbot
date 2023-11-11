@@ -25,7 +25,9 @@ def init(collections: Iterable):
         db.create_collection(collection_config.name)
 
 
-def select(collection_name: str, entry_id: Optional[str] = None, filter_: Optional[dict] = None) -> list:
+def select(
+    collection_name: str, entry_id: Optional[str] = None, filter_: Optional[dict] = None
+) -> list:
     db = get_mongo_db()
     collection = db[collection_name]
 
@@ -65,7 +67,9 @@ def update(collection_name: str, entry_id: str, new_values: dict[str, Any]) -> A
     collection = db[collection_name]
 
     try:
-        result = collection.update_one({"_id": _document_id(entry_id)}, {"$set": new_values})
+        result = collection.update_one(
+            {"_id": _document_id(entry_id)}, {"$set": new_values}
+        )
     except Exception as exc:
         return AppResult(False, exc)
 

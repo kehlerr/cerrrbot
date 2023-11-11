@@ -2,11 +2,10 @@ import logging
 from typing import Any
 
 from aiogram.types import Message
-
 from common import AppResult
 from models import (
-    ActionsData,
     COMMON_GROUP_KEY,
+    ActionsData,
     MessageDocument,
     NewMessagesCollection,
     SVM_MsgdocInfo,

@@ -1,9 +1,9 @@
 import re
+
 from httpx import URL
-
 from models import ActionsData
-from .actions import MessageActions
 
+from .actions import MessageActions
 
 _URL_PATTERN = "https?:\\/\\/(?:www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b(?:[-a-zA-Z0-9()@:%_\\+.~#?&\\/=]*)"
 URL_REGEX = re.compile(_URL_PATTERN, re.IGNORECASE)
