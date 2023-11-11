@@ -11,7 +11,7 @@ from aiogram.types import (
 )
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from constants import CUSTOM_MESSAGE_MIN_ORDER
-from models import MessageAction, MessageDocument
+from models import MessageAction, MessageDocument, SVM_ReplyInfo, ActionsData
 
 from .actions import MessageActions
 from .api import (
@@ -47,7 +47,7 @@ async def _process_received_message(
     message: Message, result_data: Dict[str, Any]
 ) -> None:
     try:
-        message_actions = result_data["reply_info"].actions
+        message_actions: ActionsData = result_data["reply_info"].actions
     except KeyError:
         message_actions = None
 
@@ -86,7 +86,9 @@ async def perform_message_actions(bot: Bot) -> None:
         # continue
         result = await perform_message_action(msgdoc_id, bot)
         if result:
-            await process_performed_action_result(msgdoc_id, result, bot=bot, chat_id=msgdoc["chat"]["id"])
+            await process_performed_action_result(
+                msgdoc_id, result, bot=bot, chat_id=msgdoc["chat"]["id"]
+            )
 
 
 async def delete_deprecated_messages(bot: Bot) -> None:
@@ -101,35 +103,39 @@ async def delete_deprecated_messages(bot: Bot) -> None:
 
 
 async def process_performed_action_result(
-    msgdoc_id: str, result: Dict[str, Any],
+    msgdoc_id: str,
+    result: Dict[str, Any],
     query: Optional[CallbackQuery] = None,
-    bot: Optional[Bot] = None, chat_id: Optional[int] = None
+    bot: Optional[Bot] = None,
+    chat_id: Optional[int] = None,
 ) -> None:
-
     try:
-        reply_info = result.data["reply_info"]
+        reply_info: SVM_ReplyInfo = result.data["reply_info"]
     except (AttributeError, KeyError):
-        reply_info = None
-        pass
-
-    if not (reply_info and reply_info.actions):
         return
 
-    next_markup = _build_message_actions_menu_kb(reply_info.actions, msgdoc_id)
+    if reply_info.actions:
+        next_markup = _build_message_actions_menu_kb(reply_info.actions, msgdoc_id)
+    else:
+        next_markup = None
 
     if query:
         if reply_info.popup_text:
             await query.answer(reply_info.popup_text)
-        if reply_info.need_edit_buttons:
+        if reply_info.need_update_buttons and next_markup:
             await query.message.edit_reply_markup(next_markup)
         return
 
-    if not reply_info.reply_action_message_id or not reply_info.need_edit_buttons:
+    if not reply_info.reply_action_message_id or not reply_info.need_update_buttons:
         return
-    await bot.edit_message_reply_markup(chat_id, reply_info.reply_action_message_id, reply_markup=next_markup)
+    await bot.edit_message_reply_markup(
+        chat_id, reply_info.reply_action_message_id, reply_markup=next_markup
+    )
 
 
-def _build_message_actions_menu_kb(reply_actions: list[MessageAction], msgdoc_id: str) -> InlineKeyboardMarkup:
+def _build_message_actions_menu_kb(
+    reply_actions: list[MessageAction], msgdoc_id: str
+) -> InlineKeyboardMarkup:
     actions_buttons = []
     custom_actions_buttons = {}
     for action in reply_actions:

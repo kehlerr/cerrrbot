@@ -19,6 +19,9 @@ class MessageAction(BaseModel):
     def __gt__(self, other):
         return self.order > other.order
 
+    def parse(self, *args, **kwargs) -> None:
+        return None
+
 
 class CustomMessageAction(MessageAction):
     caption: str = Field(min_length=1, max_length=32)
@@ -60,4 +63,8 @@ class CustomMessageAction(MessageAction):
                 links.append(str(link))
         return links
 
+
 MESSAGE_ACTION_NONE = MessageAction(code="NONE", caption="", order=0, method="")
+MESSAGE_ACTION_BACK = MessageAction(
+    code="BACK", caption="<- Back", order=5000, method="menu_back"
+)

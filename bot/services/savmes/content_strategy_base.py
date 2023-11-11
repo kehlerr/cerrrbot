@@ -1,14 +1,16 @@
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from aiogram.types import Message
+
 from common import AppResult
 from models import (
+    ActionsData,
     COMMON_GROUP_KEY,
-    MessageAction,
     MessageDocument,
     NewMessagesCollection,
     SVM_MsgdocInfo,
+    SVM_PreparedMessageInfo,
     SVM_ReplyInfo,
 )
 from settings import TIMEOUT_BEFORE_PERFORMING_DEFAULT_ACTION
@@ -37,13 +39,14 @@ class ContentStrategyBase:
             added_message_id = add_result.data["_id"]
             logger.info("Saved new message with _id:[{}]".format(str(added_message_id)))
             message_info = cls._prepare_message_info(message_data)
-            MessageDocument(added_message_id).update_message_info(
-                message_info.action,
-                message_info.actions,
-                cls.DEFAULT_MESSAGE_TTL,
-                message_info.entities,
+            msgdoc = MessageDocument(added_message_id)
+            msgdoc.update_message_info(
+                new_actions_menu=message_info.actions,
+                new_action=message_info.action,
+                new_ttl=message_info.ttl,
+                entities=message_info.entities,
             )
-            cls._prepare_reply_info(message_info, add_result.data)
+            cls._prepare_reply_info(msgdoc.cb_message_info, add_result.data)
         else:
             logger.error(
                 "Error occured while adding received message: {}".format(add_result)
@@ -51,64 +54,61 @@ class ContentStrategyBase:
         return add_result
 
     @classmethod
-    def _prepare_message_info(cls, message_data: Dict[str, Any]) -> SVM_MsgdocInfo:
-        message_info = SVM_MsgdocInfo(action=cls.DEFAULT_ACTION)
+    def _prepare_message_info(
+        cls, message_data: dict[str, Any]
+    ) -> SVM_PreparedMessageInfo:
+        actions = None
         common_group_id = message_data.get(COMMON_GROUP_KEY)
         if not common_group_id or not NewMessagesCollection.exists_document_in_group(
             COMMON_GROUP_KEY, common_group_id
         ):
-            message_info.actions = {action.code: {} for action in cls.POSSIBLE_ACTIONS}
-        cls._parse_message(message_data, message_info)
-        return message_info
+            actions = {action.code: {} for action in cls.POSSIBLE_ACTIONS}
+        parsed_actions = cls._parse_custom_actions(message_data)
+        if parsed_actions:
+            if actions is None:
+                actions = {}
+            actions.update(parsed_actions)
+
+        return SVM_PreparedMessageInfo(
+            action=cls.DEFAULT_ACTION,
+            actions=actions,
+            ttl=cls.DEFAULT_MESSAGE_TTL,
+            entities=None,
+        )
+
+    @classmethod
+    def _parse_custom_actions(cls, message_data: dict[str, Any]) -> ActionsData | None:
+        message_text = message_data.get("caption") or message_data.get("text")
+        if not message_text:
+            return None
+        parser = MessageParser(message_text)
+        parser.parse()
+        return parser.actions
 
     @classmethod
     def _prepare_reply_info(
-        cls, message_info: SVM_MsgdocInfo, result_data: Dict[str, Any]
+        cls, msgdoc_info: SVM_MsgdocInfo, result_data: dict[str, Any]
     ) -> None:
-        try:
-            reply_info = result_data["reply_info"]
-        except KeyError:
-            reply_info = SVM_ReplyInfo(**vars(message_info))
-
-        if not reply_info.actions:
-            return
-
+        force_need_update_buttons = result_data.get("need_update_buttons")
+        need_update_buttons = False
         reply_actions = []
-        for action_code, action_data in reply_info.actions.items():
+        for action_code, action_data in msgdoc_info.get_current_menu().items():
             action = MessageActions.BY_CODE[action_code]
-            additional_caption = action_data.get("additional_caption")
+            additional_caption = action_data.get("additional_caption", "")
             if additional_caption:
-                action = action.copy(update={"caption": f"{action.caption}{additional_caption}"}, deep=True)
+                action = action.copy(
+                    update={"caption": f"{action.caption}{additional_caption}"}, deep=True
+                )
+                if force_need_update_buttons is None:
+                    need_update_buttons = True
             reply_actions.append(action)
-        reply_info.actions = sorted(reply_actions)
-
-        result_data["reply_info"] = reply_info
-
-    @classmethod
-    def _parse_message(
-        cls, message_data: Dict[str, Any], message_info: SVM_MsgdocInfo
-    ) -> None:
-        message_text = message_data.get("caption") or message_data.get("text")
-        if not message_text:
-            return
-        parser = MessageParser(message_text, message_info)
-        parser.parse()
-        message_info.actions.update(parser.actions)
-
-    @classmethod
-    def _update_actions(
-        cls,
-        msgdoc: MessageDocument,
-        to_delete: Optional[List[MessageAction]] = None,
-        to_add: Optional[Dict[MessageAction, Any]] = None,
-    ) -> AppResult:
-        message_actions = msgdoc.cb_message_info.actions
-        if to_delete:
-            for action in to_delete:
-                message_actions.pop(action.code, None)
-
-        if to_add:
-            for action, data in to_add.items():
-                message_actions[action.code] = data or {}
-        result = msgdoc.update_message_info(new_actions=message_actions)
-        return result
+        if force_need_update_buttons is not None:
+            need_update_buttons = force_need_update_buttons
+        else:
+            need_update_buttons = need_update_buttons or msgdoc_info.actions_updated
+        result_data["reply_info"] = SVM_ReplyInfo(
+            actions=sorted(reply_actions),
+            reply_action_message_id=msgdoc_info.reply_action_message_id,
+            need_update_buttons=need_update_buttons,
+            popup_text=result_data.pop("popup_text", None),
+        )
