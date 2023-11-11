@@ -12,7 +12,7 @@ class TestTask(Task):
 app = Celery(
     "tasks",
     broker=f"redis://{REDIS_HOST}:{REDIS_PORT}/{REDIS_BROKER_DB_IDX}",
-    backend=f"redis://{REDIS_HOST}:{REDIS_PORT}/{REDIS_BACKEND_DB_IDX}"
+    backend=f"redis://{REDIS_HOST}:{REDIS_PORT}/{REDIS_BACKEND_DB_IDX}",
 )
 
 plugins_manager.load_tasks(app)

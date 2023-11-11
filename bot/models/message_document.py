@@ -14,7 +14,7 @@ from models import (
 )
 
 from .message_action import MESSAGE_ACTION_BACK, MESSAGE_ACTION_NONE, MessageAction
-from .message_document_info import SVM_MsgdocInfo, ActionsMenuUpdating
+from .message_document_info import ActionsMenuUpdating, SVM_MsgdocInfo
 
 logger = logging.getLogger("cerrrbot")
 

@@ -1,6 +1,6 @@
-import re
 import logging
 import os
+import re
 from dataclasses import dataclass, field
 from typing import Any, Awaitable, Callable, Optional
 
@@ -120,11 +120,11 @@ def get_seconds_from_time(time_interval: int | float | str) -> float:
 
     # Define a dictionary to map time units to seconds
     unit_to_seconds = {
-        "s": 1,       # seconds
-        "m": 60,      # minutes
-        "h": 3600,    # hours
-        "d": 86400,   # days
-        "w": 604800   # weeks
+        "s": 1,  # seconds
+        "m": 60,  # minutes
+        "h": 3600,  # hours
+        "d": 86400,  # days
+        "w": 604800,  # weeks
     }
 
     total_seconds = 0

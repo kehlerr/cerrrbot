@@ -9,4 +9,4 @@ EXCLUDE_MESSAGE_FIELDS = {
 MAX_LOAD_FILE_SIZE: int = 20000000
 
 # bot cannot operate with any message that sent more than 48h ago
-MESSAGE_DOCUMENT_TTL: int = 48*60*60 - 60*60
+MESSAGE_DOCUMENT_TTL: int = 48 * 60 * 60 - 60 * 60

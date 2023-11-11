@@ -1,5 +1,3 @@
-
-
 class CerrrbotError(Exception):
     """
     Base exception for bot application(s) errors.
@@ -10,6 +8,7 @@ class CommandArgsValidationError(CerrrbotError):
     """
     Exception raised when arguments of bot command are invalid.
     """
+
 
 class EmptyCommandArgsError(CommandArgsValidationError):
     """

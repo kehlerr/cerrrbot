@@ -32,4 +32,3 @@ class CollectionModel:
     @classmethod
     def get_documents_by_filter(cls, filter_) -> list:
         return db.select(cls.name, filter_=filter_)
-

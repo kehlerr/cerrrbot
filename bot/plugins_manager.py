@@ -3,8 +3,8 @@ from importlib import import_module
 
 from aiogram import Router
 from models import PluginModel
-from settings import PLUGINS_DIR_PATH, PLUGINS_MODULE_NAME
 from services.savmes.actions import MessageActions
+from settings import PLUGINS_DIR_PATH, PLUGINS_MODULE_NAME
 
 
 class PluginsManager:
