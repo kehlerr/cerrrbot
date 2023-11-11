@@ -6,7 +6,7 @@ ENV PYTHONUNBUFFERED 1
 
 # Install Requirements
 COPY .requirements/requirements.txt bot/plugins/requirements-plugins.txt /
-RUN if [ -f requirements-plugins.txt ]; then cat requirements-plugins.txt >> requirements.txt; fi
+RUN if [ -f requirements-plugins.txt ]; then echo "" >> requirements.txt; cat requirements-plugins.txt >> requirements.txt; fi
 RUN pip install --upgrade pip
 RUN pip wheel --no-cache-dir --no-deps --wheel-dir /wheels -r requirements.txt
 
