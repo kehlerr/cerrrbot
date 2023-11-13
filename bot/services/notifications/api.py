@@ -3,6 +3,7 @@ from datetime import datetime
 from uuid import uuid4
 
 from aiogram import Bot
+from aiogram.exceptions import TelegramBadRequest
 from common import AppResult
 from constants import CACHE_KEY_PREFIX_NOTIFICATION
 from repositories import cache
@@ -61,6 +62,8 @@ async def send_notification_message(bot: Bot, notification: Notification) -> App
             text=notification.text,
             reply_to_message_id=notification.reply_to_message_id,
         )
+    except TelegramBadRequest:
+        await bot.send_message(chat_id=notification.chat_id, text=notification.text)
     except Exception as exc:
         logger.exception(exc)
         return AppResult(False, exc)

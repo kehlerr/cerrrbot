@@ -175,7 +175,7 @@ class CustomizableContentStrategy(ContentStrategy):
         bot: Bot,
     ) -> AppResult:
         task_signature = signature(
-            task_info["task_name"], task_args, {"msgdoc_id": msgdoc._id}
+            task_info["task_name"], args=(task_args,), kwargs={"msgdoc_id": msgdoc._id}
         )
         if task_info.get("is_instant", False):
             task_signature()
