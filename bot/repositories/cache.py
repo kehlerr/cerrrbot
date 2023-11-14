@@ -3,11 +3,16 @@ from typing import Any
 import orjson as json
 from pydantic import BaseModel
 
+from constants import CACHE_DB_IDX, CACHE_KEY_PREFIX
+
 from .redis import RedisRepositoryBase
 
 
 class CacheRepositoryBase(RedisRepositoryBase):
     model_cls: BaseModel
+
+    DB_IDX = CACHE_DB_IDX
+    KEY_PREFIX = CACHE_KEY_PREFIX
 
     async def select(self, key: str) -> Any:
         entry = await super().select(key)
