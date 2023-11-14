@@ -20,7 +20,7 @@ async def get_client(db_idx: int = REDIS_NOTIFICATIONS_DB_IDX) -> Redis:
 
 class RedisRepositoryBase:
     KEY_PREFIX: str
-    DB_IDX: int = 2
+    DB_IDX: int
     KEY_PREFIX_DELIMITER: str = ":"
 
     def __init__(self) -> None:
