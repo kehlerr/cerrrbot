@@ -60,6 +60,17 @@ class RedisRepositoryBase:
     def _prepare_data(cls, data: dict[str, Any]) -> bytes:
         return json.dumps(data)
 
+    async def pop(self, key: str) -> Any | None:
+        key = self._cls_key(key)
+        result = None
+        try:
+            result = await self.select(key)
+        except EntryNotFoundError:
+            return None
+
+        await self.delete(key)
+        return result
+
     async def delete(self, key: str) -> None:
         await self._client.delete(self._cls_key(key))
 
