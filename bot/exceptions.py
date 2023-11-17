@@ -4,6 +4,12 @@ class CerrrbotError(Exception):
     """
 
 
+class InvalidSettingError(CerrrbotError):
+    """
+    Exception raised when specified setting value is invalid.
+    """
+
+
 class CommandArgsValidationError(CerrrbotError):
     """
     Exception raised when arguments of bot command are invalid.
