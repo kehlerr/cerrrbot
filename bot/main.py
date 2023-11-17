@@ -9,14 +9,15 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from celery_app import app as _  # noqa: F401
 from commands import load_commands
 from common import CheckUserMiddleware
-from constants import (
-    CHECK_FOR_DEPRECATED_MESSAGES_TIMEOUT,
-    CHECK_FOR_NEW_MESSAGES_TIMEOUT,
-    CHECK_FOR_NOTIFICATIONS,
-)
 from repositories import db
 from services import notifications, savmes
-from settings import LOGGING_LEVEL, TOKEN
+from settings import (
+    BOT_TOKEN,
+    CHECK_NOTIFICATIONS_CD_PERIOD,
+    CHECK_DEPRECATED_MESSAGES_CD_PERIOD,
+    CHECK_NEW_MESSAGES_CD_PERIOD,
+    LOGGING_LEVEL
+)
 
 logger = logging.getLogger("cerrrbot")
 logger.setLevel(LOGGING_LEVEL)
@@ -33,19 +34,19 @@ async def create_periodic_tasks(bot: Bot) -> None:
         savmes.perform_message_actions,
         "interval",
         (bot,),
-        seconds=CHECK_FOR_NEW_MESSAGES_TIMEOUT,
+        seconds=CHECK_NEW_MESSAGES_CD_PERIOD,
     )
     scheduler.add_job(
         savmes.delete_deprecated_messages,
         "interval",
         (bot,),
-        seconds=CHECK_FOR_DEPRECATED_MESSAGES_TIMEOUT,
+        seconds=CHECK_DEPRECATED_MESSAGES_CD_PERIOD
     )
     scheduler.add_job(
         notifications.process_notifications,
         "interval",
         (bot,),
-        seconds=CHECK_FOR_NOTIFICATIONS,
+        seconds=CHECK_NOTIFICATIONS_CD_PERIOD,
     )
     scheduler.start()
 
@@ -63,7 +64,7 @@ async def main():
         logger.error("DB is down")
 
     logger.info("Start bot...")
-    bot = Bot(token=TOKEN)
+    bot = Bot(token=BOT_TOKEN)
     await create_periodic_tasks(bot)
 
     main_router = Router()

@@ -1,7 +1,7 @@
 import re
 from typing import Any
 
-from constants import CUSTOM_MESSAGE_MIN_ORDER
+from settings import CUSTOM_MESSAGE_MIN_ORDER
 from httpx import URL
 from pydantic import BaseModel, Field
 

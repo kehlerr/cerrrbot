@@ -12,7 +12,7 @@ from models import (
     SVM_PreparedMessageInfo,
     SVM_ReplyInfo,
 )
-from settings import TIMEOUT_BEFORE_PERFORMING_DEFAULT_ACTION
+from settings import TIMEOUT_BEFORE_DEFAULT_ACTION_PERFORMS
 
 from .actions import MessageActions
 from .message_parser import MessageParser
@@ -21,7 +21,7 @@ logger = logging.getLogger("cerrrbot")
 
 
 class ContentStrategyBase:
-    DEFAULT_MESSAGE_TTL = TIMEOUT_BEFORE_PERFORMING_DEFAULT_ACTION
+    DEFAULT_MESSAGE_TTL = TIMEOUT_BEFORE_DEFAULT_ACTION_PERFORMS
     DEFAULT_ACTION = MessageActions.DELETE_1
 
     POSSIBLE_ACTIONS = {

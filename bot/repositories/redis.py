@@ -2,14 +2,14 @@ from typing import Any
 
 import orjson as json
 from redis import asyncio as aioredis, Redis
-from settings import REDIS_HOST, REDIS_NOTIFICATIONS_DB_IDX, REDIS_PORT
+from settings import REDIS_HOST, CACHE_DEFAULT_DB, REDIS_PORT
 
 from .exceptions import DuplicatedEntryError, EntryNotFoundError
 
 _redis = None
 
 
-async def get_client(db_idx: int = REDIS_NOTIFICATIONS_DB_IDX) -> Redis:
+async def get_client(db_idx: int = CACHE_DEFAULT_DB) -> Redis:
     global _redis
     if _redis is None:
         _redis = await aioredis.from_url(

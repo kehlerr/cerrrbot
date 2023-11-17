@@ -10,7 +10,7 @@ from aiogram.types import (
     Message,
 )
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from constants import CUSTOM_MESSAGE_MIN_ORDER
+from settings import CUSTOM_MESSAGE_MIN_ORDER
 from models import ActionsData, MessageAction, MessageDocument, SVM_ReplyInfo
 
 from .actions import MessageActions
