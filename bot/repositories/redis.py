@@ -6,21 +6,12 @@ from settings import REDIS_HOST, CACHE_DEFAULT_DB, REDIS_PORT
 
 from .exceptions import DuplicatedEntryError, EntryNotFoundError
 
-_redis = None
-
-
-async def get_client(db_idx: int = CACHE_DEFAULT_DB) -> Redis:
-    global _redis
-    if _redis is None:
-        _redis = await aioredis.from_url(
-            f"redis://{REDIS_HOST}:{REDIS_PORT}/{db_idx}"
-        )
-    return _redis
-
 
 class RedisRepositoryBase:
+    HOST: str = REDIS_HOST
+    PORT: str = REDIS_PORT
     KEY_PREFIX: str
-    DB_IDX: int
+    DB_IDX: int = CACHE_DEFAULT_DB
     KEY_PREFIX_DELIMITER: str = ":"
 
     def __init__(self) -> None:
@@ -28,7 +19,8 @@ class RedisRepositoryBase:
         self.KEY_ALL = f"{self.KEY_PREFIX}{self.KEY_PREFIX_DELIMITER}*"
 
     async def init_client(self) -> None:
-        self._client = await get_client(self.DB_IDX)
+        if self._client is None:
+            self._client = await aioredis.from_url(f"redis://{self.HOST}:{self.PORT}/{self.DB_IDX}")
 
     # TODO: iterate all
     async def get_all(self, key_pattern: str | None = None) -> dict[str, bytes]:
