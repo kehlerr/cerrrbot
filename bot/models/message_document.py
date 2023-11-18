@@ -195,8 +195,10 @@ class MessageDocument(Message):
 
         return str(chat.id), chat.title
 
-    def get_from_user_data(self) -> tuple[str, str]:
-        return self.from_user.id, self.from_user.username
+    def get_from_user_data(self) -> tuple[str | None, str | None]:
+        if not self.from_user:
+            return None, None
+        return str(self.from_user.id), self.from_user.username
 
     def _fetch_document_data(self, document_id):
         for collection in models.collections:

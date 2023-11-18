@@ -1,4 +1,5 @@
 import re
+from typing import Any
 
 from httpx import URL
 from models import ActionsData
@@ -10,18 +11,19 @@ URL_REGEX = re.compile(_URL_PATTERN, re.IGNORECASE)
 
 
 class MessageParser:
-    def __init__(self, message_text: str):
+    def __init__(self, message_text: str, entities: list[dict[str, Any]]):
         self._message_text = message_text
+        self._entities = entities
         self.actions: ActionsData = {}
         self._links: tuple[URL, ...] = ()
         self._init_links()
 
     def _init_links(self) -> None:
         links = URL_REGEX.findall(self._message_text)
-        # if message_info.entities:
-        #    links.extend([
-        #        e["url"] for e in message_info.entities if e["type"] == "text_link"
-        #    ])
+        if self._entities:
+           links.extend([
+               e["url"] for e in self._entities if e["type"] == "text_link"
+           ])
         self._links = tuple(URL(link) for link in set(links))
 
     def parse(self) -> None:
