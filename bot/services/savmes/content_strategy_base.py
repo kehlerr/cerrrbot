@@ -78,9 +78,10 @@ class ContentStrategyBase:
     @classmethod
     def _parse_custom_actions(cls, message_data: dict[str, Any]) -> ActionsData | None:
         message_text = message_data.get("caption") or message_data.get("text")
-        if not message_text:
+        message_entities = message_data.get("entities", [])
+        if not message_text and not message_entities:
             return None
-        parser = MessageParser(message_text)
+        parser = MessageParser(message_text, message_entities)
         parser.parse()
         return parser.actions
 
