@@ -58,7 +58,7 @@ cd cerrrbot/
 `python -m venv .venv && source activate`
 2. Install the required dependencies and initialize the appdata directory::
 `make init`
-3. Edit the `.env` file to configure bot (see [Configuration section](#configuration) below) and ensure the `BOT_TOKEN` variable is set with your bot's token and `ALLOWED_USERS` filled with at least one *Telegram User ID*.
+3. Edit the `.env` file to configure bot (see [Configuration section](#configuration) below) and ensure the `CERRRBOT_TOKEN` variable is set with your bot's token and `CERRRBOT_ALLOWED_USERS` filled with at least one *Telegram User ID*.
 4.  Run bot:
 `make run`
 
@@ -67,7 +67,7 @@ cd cerrrbot/
 `docker network create cerrrbot-network`
 2. Copy `sample.env` file to `.env`:
 `make copy_env`
-3. Edit the `.env` file to configure bot (see [Configuration section](#configuration) below) and ensure the `BOT_TOKEN` variable is set with your bot's token and `ALLOWED_USERS` filled with at least one *Telegram User ID*.
+3. Edit the `.env` file to configure bot (see [Configuration section](#configuration) below) and ensure the `CERRRBOT_TOKEN` variable is set with your bot's token and `CERRRBOT_ALLOWED_USERS` filled with at least one *Telegram User ID*.
 4. Run Docker containers:
 `make dc_up` 
 
@@ -75,7 +75,7 @@ cd cerrrbot/
 You can find an example of the configuration in the `sample.env` and `bot/settings.py` files. Most variables are self-explanatory; however, here are explanations for some of them:
 - `ALLOWED_USERS` - a list of user IDs permitted to send messages to the bot. Must contain at least one user ID;
 - `DELETE_TIMEOUT_1`, `DELETE_TIMEOUT_2`, `DELETE_TIMEOUT_3` - 3 options for delayed message deletion, see [Usage section](#usage) below about it.
-- `TIMEOUT_BEFORE_PERFORMING_DEFAULT_ACTION` -  a timeout before executing automatic default actions, see [Usage section](#usage) below about it;
+- `TIMEOUT_BEFORE_DEFAULT_ACTION_PERFORMS` -  a timeout before executing automatic default actions, see [Usage section](#usage) below about it;
 - `DEFAULT_CACHE_KEY_PREFIX_NOTIFICATION` - prefix for keys in Redis used to select rows for sending notifications.
 
 ## Usage
@@ -84,7 +84,7 @@ When you send or forward some message with text only, Bot will reply on this mes
 
 ### Sending Messages with Media
 When you send or forward message with media content (video, image, GIF, audio, file, voicemessage and videomessage), a `Download` button will be added to the *reply-message*. If the message contains multiple media items (so-called *group of medias*), a `Download all` button will be provided for downloading all items in the group, but if you press `Download`, the first media will be download only. All downloads will be stored in directory, specified in `DATA_DIR_PATH` variable.
-By default, messages with media content will trigger the `Download` or `Download all` action (for *media groups*). If you don't press `Keep` or `Delete`, the media will be downloaded after a delay specified in the `TIMEOUT_BEFORE_PERFORMING_DEFAULT_ACTION` variable.
+By default, messages with media content will trigger the `Download` or `Download all` action (for *media groups*). If you don't press `Keep` or `Delete`, the media will be downloaded after a delay specified in the `TIMEOUT_BEFORE_DEFAULT_ACTION_PERFORMS` variable.
 
 ### Sending Stickers
 The logic for messages with stickers is similar to messages with media, but `Download` and `Download all` buttons are always provided. When you press `Download` the sent sticker is downloaded, in second case all stickers from *sticker pack* will be download in directory with name of this *sticker pack*.
