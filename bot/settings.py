@@ -17,6 +17,8 @@ ALLOWED_USERS = config(
     cast=lambda v: [int(s.strip()) for s in v.split(",") if s],
     default="",
 )
+
+MAX_LOAD_FILE_SIZE = config("CERRRBOT_MAX_LOAD_FILE_SIZE", cast=int, default=20000000)
 DATA_DIRECTORY_ROOT = config("CERRRBOT_DATA_ROOT", default=os.path.join(os.getcwd(), "appdata"))
 if not os.path.isdir(DATA_DIRECTORY_ROOT):
     raise InvalidSettingError(f"CERRRBOT_DATA_ROOT doesn't exists: {DATA_DIRECTORY_ROOT}")
