@@ -6,6 +6,7 @@ from aiogram import Bot
 from aiogram.types import ContentType
 from celery import signature, states
 from celery.contrib.abortable import AbortableAsyncResult as CeleryTaskResult
+
 from common import AppResult, save_file
 from models import (
     COMMON_GROUP_KEY,
@@ -13,10 +14,9 @@ from models import (
     MessageDocument,
     SVM_MsgdocInfo,
 )
-from settings import DELETE_TIMEOUT_1, DELETE_TIMEOUT_2, DELETE_TIMEOUT_3
+from settings import DELETE_TIMEOUT_1, DELETE_TIMEOUT_2, DELETE_TIMEOUT_3, MAX_LOAD_FILE_SIZE
 
 from .actions import MessageActions
-from .constants import MAX_LOAD_FILE_SIZE
 from .content_strategy_base import ContentStrategyBase
 
 logger = logging.getLogger("cerrrbot")
@@ -143,7 +143,7 @@ class ContentStrategy(ContentStrategyBase):
         )
 
     @classmethod
-    async def download(cls, *args):
+    async def download(cls, *args: Any, **kwargs: Any) -> Any:
         raise NotImplementedError
 
     @classmethod
@@ -261,7 +261,7 @@ class _DownloadableContentStrategy(ContentStrategy):
             if cls.content_type_key == ContentType.PHOTO
             else message_data[cls.content_type_key]["file_size"]
         )
-        if fsize < MAX_LOAD_FILE_SIZE:
+        if MAX_LOAD_FILE_SIZE < 0 or fsize < MAX_LOAD_FILE_SIZE:
             message_info.action = MessageActions.DOWNLOAD
             if message_actions and COMMON_GROUP_KEY in message_data:
                 message_actions.pop(MessageActions.DOWNLOAD.code)
@@ -295,10 +295,11 @@ class _DownloadableContentStrategy(ContentStrategy):
         else:
             result = await cls._download(msgdoc, bot)
 
-        if result:
-            result = msgdoc.update_message_info(
-                actions_to_del=(MessageActions.DOWNLOAD, MessageActions.DOWNLOAD_ALL)
-            )
+        logger.info(f"[{msgdoc._id}] Result of download:{result}")
+
+        result = msgdoc.update_message_info(
+            actions_to_del=(MessageActions.DOWNLOAD, MessageActions.DOWNLOAD_ALL)
+        )
         return result
 
     @classmethod
