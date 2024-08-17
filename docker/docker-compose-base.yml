@@ -8,10 +8,15 @@ services:
       dockerfile: "${DOCKERFILE_PATH}"
     volumes:
       - "${APP_CONTAINER_VOLUME_DATA_DIR_PATH}:${DATA_DIR_PATH}"
+      - cerrrbot-data:/var/lib/telegram-bot-api
     networks:
       - cerrrbot-network
     env_file:
       - "${ENV_FILE}"
+
+volumes:
+  cerrrbot-data:
+    external: true
 
 networks:
   cerrrbot-network:

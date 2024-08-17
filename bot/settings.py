@@ -10,8 +10,16 @@ DEBUG = config("CERRRBOT_DEBUG", default=False, cast=bool)
 SCHEME = config("CERRRBOT_HTTP_SCHEME", default="http" if DEBUG else "https").lower()
 LOGGING_LEVEL = config("CERRRBOT_LOGGING_LEVEL", default="DEBUG" if DEBUG else "INFO").upper()
 
-# Base app settings
+# Base bot settings
 BOT_TOKEN = config("CERRRBOT_TOKEN")
+_BOT_API_SERVER_SCHEME = config("CERRRBOT_TG_API_SERVER_SCHEME", default="http")
+_BOT_API_SERVER_HOST = config("CERRRBOT_TG_API_SERVER_HOST")
+_BOT_API_SERVER_PORT = config("CERRRBOT_TG_API_SERVER_PORT", cast=int, default=8081)
+if not _BOT_API_SERVER_HOST:
+    raise InvalidSettingError("BOT_API_SERVER_HOST must be specified!")
+
+BOT_API_SERVER_URI = f"{_BOT_API_SERVER_SCHEME}://{_BOT_API_SERVER_HOST}:{_BOT_API_SERVER_PORT}"
+
 ALLOWED_USERS = config(
     "CERRRBOT_ALLOWED_USERS",
     cast=lambda v: [int(s.strip()) for s in v.split(",") if s],

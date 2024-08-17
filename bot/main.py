@@ -3,9 +3,12 @@
 import asyncio
 import logging
 
-import models
 from aiogram import Bot, Dispatcher, Router
+from aiogram.client.session.aiohttp import AiohttpSession
+from aiogram.client.telegram import TelegramAPIServer
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+
+import models
 from celery_app import app as _  # noqa: F401
 from commands import load_commands
 from common import CheckUserMiddleware
@@ -13,6 +16,7 @@ from repositories import db
 from services import notifications, savmes
 from settings import (
     BOT_TOKEN,
+    BOT_API_SERVER_URI,
     CHECK_NOTIFICATIONS_CD_PERIOD,
     CHECK_DEPRECATED_MESSAGES_CD_PERIOD,
     CHECK_NEW_MESSAGES_CD_PERIOD,
@@ -51,6 +55,25 @@ async def create_periodic_tasks(bot: Bot) -> None:
     scheduler.start()
 
 
+def create_bot() -> Bot:
+    logger.info("Creating local server...")
+    api_server = TelegramAPIServer.from_base(BOT_API_SERVER_URI, is_local=True)
+
+    logger.info("Creating session for local server...")
+    session = AiohttpSession(api=api_server)
+
+    logger.info("Starting bot...")
+    return Bot(token=BOT_TOKEN, session=session)
+
+
+async def logout_bot(bot: Bot) -> None:
+    """Run this func before starting local server at first time."""
+    result = await bot.log_out()
+    if result:
+        exit(0)
+
+
+
 scheduler = AsyncIOScheduler()
 
 
@@ -63,8 +86,9 @@ async def main():
     else:
         logger.error("DB is down")
 
-    logger.info("Start bot...")
-    bot = Bot(token=BOT_TOKEN)
+    bot = create_bot()
+    #logout_bot(bot)
+
     await create_periodic_tasks(bot)
 
     main_router = Router()
