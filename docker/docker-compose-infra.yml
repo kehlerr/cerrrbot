@@ -38,8 +38,10 @@ services:
       TELEGRAM_API_HASH: "${CERRRBOT_TG_API_HASH}"
       TELEGRAM_LOCAL: "true"
       TELEGRAM_VERBOSITY: 3
+      TELEGRAM_WORK_DIR: "${CERRRBOT_TG_API_SERVER_WORK_DIR}"
+    entrypoint: ['sh', '-c', 'chmod -R g+w "$$TELEGRAM_WORK_DIR" && /docker-entrypoint.sh']
     volumes:
-      - cerrrbot-data:/var/lib/telegram-bot-api
+      - cerrrbot-data:${CERRRBOT_TG_API_SERVER_WORK_DIR}
     ports:
       - "${CERRRBOT_TG_API_SERVER_PORT}:8081"
     networks:
