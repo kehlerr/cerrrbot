@@ -48,6 +48,8 @@ services:
       cerrrbot-network:
         aliases:
           - "${CERRRBOT_TG_API_SERVER_HOST}"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
 volumes:
   cerrrbot-data:
