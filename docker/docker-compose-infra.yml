@@ -19,7 +19,7 @@ services:
     image: mongo:4.4.18
     container_name: "${CERRRBOT_MONGO_CONTAINER_NAME}"
     volumes:
-      - "${CERRRBOT_MONGO_CONTAINER_VOLUME_DATA_DIR_PATH}:/data/db/"
+      - cerrrbot-mongo-data:/data/db/
     healthcheck:
       test: echo 'db.runCommand("ping").ok' | mongo localhost:${CERRRBOT_MONGO_PORT}/test --quiet
       interval: 5s
@@ -42,8 +42,6 @@ services:
     entrypoint: ['sh', '-c', 'chmod -R g+w "$$TELEGRAM_WORK_DIR" && /docker-entrypoint.sh']
     volumes:
       - cerrrbot-data:${CERRRBOT_TG_API_SERVER_WORK_DIR}
-    ports:
-      - "${CERRRBOT_TG_API_SERVER_PORT}:8081"
     networks:
       cerrrbot-network:
         aliases:
@@ -53,8 +51,10 @@ services:
 
 volumes:
   cerrrbot-data:
-    external: true
     name: cerrrbot-data
+    external: true
+  cerrrbot-mongo-data:
+    name: cerrrbot-mongo-data
 
 networks:
   cerrrbot-network:

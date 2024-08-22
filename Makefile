@@ -1,4 +1,3 @@
-SHELL=./activate
 dc_rm: SHELL=/bin/bash
 DOCKER_COMPOSE_ARGS := -f ./docker/docker-compose-infra.yml -f ./docker/docker-compose-app.yml --env-file=.env
 DOCKER_COMPOSE_APP_SERVICES := app-bot app-celery-worker
