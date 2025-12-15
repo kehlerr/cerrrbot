@@ -1,10 +1,14 @@
 import os
 from importlib import import_module
+from types import ModuleType
+from typing import Iterator
 
 from aiogram import Router
 from models import PluginModel
 from services.savmes.actions import MessageActions
 from settings import PLUGINS_DIR_PATH, PLUGINS_MODULE_NAME
+
+from celery import Celery
 
 
 class PluginsManager:
@@ -16,7 +20,10 @@ class PluginsManager:
             except ModuleNotFoundError:
                 continue
 
-            self._plugins.append(self._load_plugin(plugin_module))
+            plugin = self._load_plugin(plugin_module)
+            if not plugin:
+                continue
+            self._plugins.append(plugin)
 
         self._load_actions()
 
@@ -26,7 +33,14 @@ class PluginsManager:
             loaded_actions.extend(plugin.actions)
         MessageActions.load_custom_actions(loaded_actions)
 
-    def _load_plugin(self, module) -> PluginModel:
+    def _load_plugin(self, module: ModuleType) -> PluginModel | None:
+        is_enabled: bool = True
+        try:
+            is_enabled = module.is_enabled
+        finally:
+            if not is_enabled:
+                return None
+
         try:
             commands_router = module.commands_router
         except AttributeError:
@@ -44,10 +58,10 @@ class PluginsManager:
 
         return PluginModel(commands_router=commands_router, tasks=tasks, actions=actions)
 
-    def get_commands_routers(self) -> tuple[Router]:
+    def get_commands_routers(self) -> Iterator[Router]:
         return (v.commands_router for v in self._plugins if v.commands_router is not None)
 
-    def load_tasks(self, app) -> list[Router]:
+    def load_tasks(self, app: Celery) -> None:
         tasks = []
         for plugin in self._plugins:
             tasks.extend(plugin.tasks)
