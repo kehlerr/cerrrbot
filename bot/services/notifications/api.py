@@ -39,9 +39,10 @@ async def process_notifications(bot: Bot):
 
 
 async def repeat_push(notification: Notification) -> AppResult:
+    send_count = notification.send_count - 1 if notification.send_count > 0 else notification.send_count
     new_notificaton = notification.copy_with(
         send_at=int(datetime.utcnow().timestamp()) + notification.repeat_in,
-        send_count=notification.send_count - 1,
+        send_count=send_count,
     )
     result = await push_message_notification(new_notificaton)
     return result

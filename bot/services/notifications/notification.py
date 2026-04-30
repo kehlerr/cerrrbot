@@ -19,4 +19,4 @@ class Notification(BaseModel):
 
     def need_send(self) -> bool:
         now_tstamp = int(datetime.utcnow().timestamp())
-        return self.send_count > 0 and now_tstamp >= self.send_at
+        return self.send_count != 0 and now_tstamp >= self.send_at
