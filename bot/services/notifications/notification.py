@@ -1,7 +1,5 @@
-from datetime import datetime
-from typing import Optional, Self
+from datetime import datetime, timezone
 
-import orjson as json
 from pydantic import BaseModel
 from settings import ALLOWED_USERS
 
@@ -18,5 +16,5 @@ class Notification(BaseModel):
         return self.repeat_in > 0 and self.send_count > 1
 
     def need_send(self) -> bool:
-        now_tstamp = int(datetime.utcnow().timestamp())
+        now_tstamp = int(datetime.now(timezone.utc).timestamp())
         return self.send_count != 0 and now_tstamp >= self.send_at
