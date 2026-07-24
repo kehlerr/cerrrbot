@@ -1,9 +1,9 @@
 import logging
 import os
-from typing import Any, NoReturn, Optional, Union
+from typing import Any, NoReturn, cast
 
 from aiogram import Bot
-from aiogram.types import ContentType
+from aiogram.types import ContentType, File
 from celery import signature, states
 from celery.contrib.abortable import AbortableAsyncResult as CeleryTaskResult
 
@@ -316,29 +316,27 @@ class _DownloadableContentStrategy(ContentStrategy):
     @classmethod
     async def _download_file_impl(
         cls,
-        downloadable: list[Any],
+        downloadable: list[File],
         bot: Bot,
-        from_user: Optional[str] = "",
-        from_chat: Optional[str] = "",
-        dir_name: Optional[str] = "",
+        from_user: str | None = "",
+        from_chat: str | None = "",
+        dir_name: str = "",
     ) -> AppResult:
         file_data = cls._best_quality_variant(downloadable)
         if not file_data:
             return AppResult(False, "Wrong downloadable_data: {}".format(downloadable))
 
-        dir_path = os.path.join(str(from_user), dir_name)
+        dir_path = os.path.join(from_chat or from_user or "", dir_name)
         file_name = cls._get_file_name(file_data, from_user, from_chat)
         return await save_file(bot, file_data.file_id, file_name, dir_path)
 
     @classmethod
-    def _best_quality_variant(
-        cls, variants_data: list[Any]
-    ) -> Union[dict[str, Any], None]:
-        return variants_data
+    def _best_quality_variant(cls, variants_data: File | list[File]) -> File | None :
+        return cast(File, variants_data) if variants_data else None
 
     @classmethod
     def _get_file_name(
-        cls, file_data: dict[str, Any], from_user_id: str, from_chat_id: str
+        cls, file_data: File, from_user_id: str | None, from_chat_id: str | None
     ) -> str:
         extension = cls._get_extension(file_data)
         file_name = f"{file_data.file_unique_id}"
@@ -359,12 +357,16 @@ class PhotoContentStrategy(_DownloadableContentStrategy):
     file_extension: str = "jpg"
 
     @classmethod
-    def _best_quality_variant(cls, variants_data: list[Any]) -> Optional[dict[str, Any]]:
-        sorted_variants = sorted(
-            variants_data, key=lambda v: getattr(v, cls.sort_key), reverse=True
-        )
-        return sorted_variants and sorted_variants[0]
+    def _best_quality_variant(cls, variants_data: File | list[File]) -> File | None:
+        if not variants_data:
+            return None
 
+        if isinstance(variants_data, File):
+            return variants_data
+
+        return sorted(
+            variants_data, key=lambda v: getattr(v, cls.sort_key), reverse=True
+        )[0]
 
 class VideoContentStrategy(_DownloadableContentStrategy):
     content_type_key: str = ContentType.VIDEO

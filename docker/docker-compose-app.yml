@@ -10,8 +10,12 @@ services:
     depends_on:
       mongo:
         condition: service_healthy
-    command: bash -c "python main.py"
+    command: bash -c "python ."
     restart: on-failure:15
+    networks:
+      cerrrbot-network:
+        aliases:
+          - "${CERRRBOT_WEBHOOK_HOST}"
   app-celery-worker:
     image: "${APP_IMAGE_NAME}"
     container_name: "${APP_CELERY_WORKER_CONTAINER_NAME}"

@@ -46,4 +46,7 @@ RUN pip install --no-cache /wheels/*
 # Create the app user
 RUN groupadd $USER && useradd -g $USER $USER
 RUN chown -R $USER:$USER $HOME
+# Add user to group 101 which to have access to /var/lib/tg* directory which owned by local API server
+RUN usermod -aG 101 $USER
+
 USER $USER

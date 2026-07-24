@@ -5,23 +5,44 @@ from decouple import config
 from exceptions import InvalidSettingError
 
 
-# Not app-specific settings
+# Base settings
+BOT_TOKEN = config("CERRRBOT_TOKEN")
 DEBUG = config("CERRRBOT_DEBUG", default=False, cast=bool)
 SCHEME = config("CERRRBOT_HTTP_SCHEME", default="http" if DEBUG else "https").lower()
 LOGGING_LEVEL = config("CERRRBOT_LOGGING_LEVEL", default="DEBUG" if DEBUG else "INFO").upper()
 
-# Base app settings
-BOT_TOKEN = config("CERRRBOT_TOKEN")
+## TG API server settings
+_BOT_API_SERVER_SCHEME = config("CERRRBOT_TG_API_SERVER_SCHEME", default="http")
+_BOT_API_SERVER_HOST = config("CERRRBOT_TG_API_SERVER_HOST")
+_BOT_API_SERVER_PORT = config("CERRRBOT_TG_API_SERVER_PORT", cast=int, default=8081)
+BOT_API_SERVER_URI = f"{_BOT_API_SERVER_SCHEME}://{_BOT_API_SERVER_HOST}:{_BOT_API_SERVER_PORT}"
+
+## Webhook App settings
+_WEBHOOK_SCHEME = config("CERRRBOT_WEBHOOK_SCHEME", default="http")
+_WEBHOOK_HOST = config("CERRRBOT_WEBHOOK_HOST")
+_WEBHOOK_PORT = config("CERRRBOT_WEBHOOK_PORT", cast=int)
+WEBHOOK_URI = f"{_WEBHOOK_SCHEME}://{_WEBHOOK_HOST}:{_WEBHOOK_PORT}"
+
+WEBHOOK_APP_HOST = config("CERRRBOT_WEBHOOK_APP_HOST", default="0.0.0.0")
+WEBHOOK_APP_PORT = config("CERRRBOT_WEBHOOK_APP_PORT", cast=int, default=_WEBHOOK_PORT)
+
+WEBHOOK_ENDPOINT = config("CERRRBOT_WEBHOOK_ENDPOINT")
+WEBHOOK_ENDPOINT_URL = f"{WEBHOOK_URI}{WEBHOOK_ENDPOINT}"
+WEBHOOK_SECRET = config("CERRRBOT_WEBHOOK_SECRET")
+
+
+# Bot App settings
 ALLOWED_USERS = config(
     "CERRRBOT_ALLOWED_USERS",
     cast=lambda v: [int(s.strip()) for s in v.split(",") if s],
     default="",
 )
 
-MAX_LOAD_FILE_SIZE = config("CERRRBOT_MAX_LOAD_FILE_SIZE", cast=int, default=20000000)
 DATA_DIRECTORY_ROOT = config("CERRRBOT_DATA_ROOT", default=os.path.join(os.getcwd(), "appdata"))
 if not os.path.isdir(DATA_DIRECTORY_ROOT):
     raise InvalidSettingError(f"CERRRBOT_DATA_ROOT doesn't exists: {DATA_DIRECTORY_ROOT}")
+
+MAX_LOAD_FILE_SIZE = config("CERRRBOT_MAX_LOAD_FILE_SIZE", cast=int, default=20000000)
 CUSTOM_MESSAGE_MIN_ORDER = config("CERRRBOT_CUSTOM_MESSAGE_MIN_ORDER", default=100, cast=int)
 
 ## Timeouts
@@ -47,14 +68,17 @@ PLUGINS_DIR_PATH = os.path.join( os.path.dirname(os.path.realpath(__file__)), PL
 if not os.path.isdir(PLUGINS_DIR_PATH):
     raise InvalidSettingError(f"PLUGINS_DIR_PATH doesn't exists: {PLUGINS_DIR_PATH}")
 
+
 # MongoDB settings
 MONGO_DB_HOST = config("CERRRBOT_MONGO_HOST", default="localhost")
 MONGO_DB_PORT = config("CERRRBOT_MONGO_PORT", default=27017, cast=int)
 MONGO_DB_NAME = config("CERRRBOT_MONGO_DB_NAME", default="cerrrbot_mongo")
 
+
 # Redis settings
 REDIS_HOST = config("CERRRBOT_REDIS_HOST", default="localhost")
 REDIS_PORT = config("CERRRBOT_REDIS_PORT", default=6379, cast=int)
+
 
 ## Celery settings
 CELERY_BROKER_DB = config("CERRRBOT_CELERY_BROKER_DB", default=0, cast=int)

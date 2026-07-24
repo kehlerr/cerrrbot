@@ -2,10 +2,10 @@ import logging
 import os
 import re
 from dataclasses import dataclass, field
-from typing import Any, Awaitable, Callable, Optional
+from typing import Any, Awaitable, Callable, Optional, cast
 
 from aiogram import BaseMiddleware, Bot
-from aiogram.types import Message
+from aiogram.types import Message, TelegramObject
 from settings import ALLOWED_USERS, DATA_DIRECTORY_ROOT
 
 logger = logging.getLogger("cerrrbot")
@@ -15,11 +15,11 @@ logger = logging.getLogger("cerrrbot")
 class AppResult:
     status: int | bool = True
     info: Optional[str] = ""
-    _info: list[str] = field(default_factory=lambda: [])
-    data: dict[Any] = field(default_factory=lambda: {})
+    _info: list[str] = field(default_factory=list)
+    data: dict[str, Any] = field(default_factory=dict)
 
     def __bool__(self) -> bool:
-        return self.status
+        return bool(self.status)
 
     def __getattr__(self, __name: str) -> Any:
         return self.data[__name]
@@ -35,7 +35,7 @@ class AppResult:
             _str = f"\nData:{self.data}"
         return _str
 
-    def merge(self, *other_results) -> None:
+    def merge(self, *other_results: "AppResult") -> None:
         for result in other_results:
             if isinstance(result, bool):
                 self.status = self.status and result
@@ -53,12 +53,12 @@ class CheckUserMiddleware(BaseMiddleware):
     async def __call__(
         self,
         handler: Callable[[Message, dict[str, Any]], Awaitable[Any]],
-        message: Message,
+        message: TelegramObject,
         data: dict[str, Any],
     ) -> Any:
-        user_sender = message.from_user
-        if user_sender.id in ALLOWED_USERS:
-            return await handler(message, data)
+        user_sender = cast(Message, message).from_user
+        if user_sender and user_sender.id in ALLOWED_USERS:
+            return await handler(cast(Message, message), data)
 
         logger.warning(
             "Someone tried to send message;\nUser: {};\nMessage: {}".format(
@@ -76,14 +76,14 @@ def create_directory(directory_name: str) -> AppResult:
     try:
         os.mkdir(directory_path)
     except Exception as exc:
-        result = AppResult(False, exc)
+        result = AppResult(False, str(exc))
     else:
         result = AppResult(True, data={"path": directory_path})
 
     return result
 
 
-def get_directory_path(directory_path: str) -> os.PathLike:
+def get_directory_path(directory_path: str) -> str:
     return os.path.join(DATA_DIRECTORY_ROOT, directory_path)
 
 
@@ -97,7 +97,7 @@ async def save_file(bot: Bot, file_id: str, file_name: str, dir_name: str) -> Ap
         await bot.download(file_id, file_path)
     except Exception as exc:
         logger.error(exc)
-        return AppResult(False, exc)
+        return AppResult(False, str(exc))
 
     return AppResult()
 
