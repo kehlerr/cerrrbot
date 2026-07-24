@@ -1,4 +1,4 @@
-[submodule "bot/plugins"]
-	path = bot/plugins
+[submodule "app/plugins"]
+	path = app/plugins
 	url = git@github.com:kehlerr/cerrrbot-plugins.git
 	ignore = dirty

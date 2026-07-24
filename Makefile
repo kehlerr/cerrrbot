@@ -32,7 +32,7 @@ clean: dc_rm_all
 	@rm -rf .dev_meta
 
 run:
-	python bot/main.py
+	python main.py
 
 pretty:
 	isort . && black . && flake8 .

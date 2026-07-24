@@ -10,3 +10,5 @@ appdata/
 
 # docker files
 dev.env
+
+.vscode/*
