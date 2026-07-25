@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+import hashlib
 from datetime import datetime
 from typing import cast, Annotated, Any, Self, Sequence
 
-from pydantic import ConfigDict, BeforeValidator, Field
-
+from aiogram.enums import MessageOriginType
 from aiogram.types import Message
+from pydantic import ConfigDict, BeforeValidator, Field
 
 from app.actions import MessageActions
 
@@ -142,12 +143,12 @@ class MessageDocument(Message):
                 actions_menus.pop()
 
         try:
-            actions_menus[-2].pop(MessageActions.BACK.code, None)
+            actions_menus[-2].pop(MessageActions.MENU_BACK.code, None)
         except IndexError:
             ...
 
         if len(actions_menus) > 1:
-            actions_menus[-1][MessageActions.BACK.code] = {}
+            actions_menus[-1][MessageActions.MENU_BACK.code] = {}
 
         msg_info.actions_menus = actions_menus
 
@@ -160,6 +161,20 @@ class MessageDocument(Message):
         if self.forward_from:
             return str(self.forward_from.id), (self.forward_from.username or self.forward_from.full_name)
 
+        if forward_origin := self.forward_origin:
+            if forward_origin.type == MessageOriginType.USER:
+                user = forward_origin.sender_user
+                return str(user.id), (user.username or user.full_name)
+            elif forward_origin.type == MessageOriginType.HIDDEN_USER:
+                user_id = hashlib.sha256(forward_origin.sender_user_name.encode()).hexdigest()[:8]
+                return user_id, forward_origin.sender_user_name
+            elif forward_origin.type == MessageOriginType.CHAT:
+                chat = forward_origin.sender_chat
+                return str(chat.id), (chat.title or chat.username or "unknown")
+            elif forward_origin.type == MessageOriginType.CHANNEL:
+                chat = forward_origin.chat
+                return str(chat.id), (chat.title or chat.username or "unknown")
+
         chat = self.forward_from_chat or self.chat
         return str(chat.id), (chat.title or chat.username or "unknown")
 
@@ -167,3 +182,27 @@ class MessageDocument(Message):
         if not self.from_user:
             return None, None
         return str(self.from_user.id), self.from_user.username
+
+    def get_message_source(self) -> str:
+
+        if not (forward_origin := self.forward_origin):
+            return str(self.chat.id)
+
+        chat_id, user_id = None, None
+
+        if forward_origin.type == MessageOriginType.USER:
+            user_id = forward_origin.sender_user.id
+        elif forward_origin.type == MessageOriginType.HIDDEN_USER:
+            user_id = hashlib.sha256(forward_origin.sender_user_name.encode()).hexdigest()[:8]
+        elif forward_origin.type == MessageOriginType.CHAT:
+            chat_id = forward_origin.sender_chat.id
+        else:
+            chat_id = forward_origin.chat.id
+
+        if not chat_id:
+            chat_id = self.chat.id
+
+        if user_id:
+            return f"{chat_id}_{user_id}"
+
+        return str(chat_id)
