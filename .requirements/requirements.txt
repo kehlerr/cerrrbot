@@ -1,9 +1,0 @@
-aiogram==3.0.0b5
-pydantic==1.10.12
-celery==5.2.7
-Redis==4.5.4
-pymongo==4.17.0
-apscheduler==3.10.4
-orjson==3.9.7
-pydantic-settings==2.14.2
-pyotp==2.7.0
