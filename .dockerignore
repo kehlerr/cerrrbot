@@ -1,0 +1,26 @@
+# Databases & local data
+appdata/
+data/
+
+# Git
+.git/
+
+# Python caches and virtual environments
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+env/
+.pyenv/
+.tox/
+
+# IDEs
+.idea/
+.vscode/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/

@@ -4,12 +4,8 @@ DOCKER_COMPOSE_ARGS := -f ./docker/docker-compose-infra.yml -f ./docker/docker-c
 DOCKER_COMPOSE_APP_SERVICES := app-bot app-celery-worker
 
 # Environment management commands
-init: venv_install copy_env create_appdata
+init: copy_env create_appdata
 	echo "done"
-
-venv_install:
-	pip install --upgrade pip
-	pip install -r .requirements/requirements.txt
 
 create_appdata:
 	@ls appdata || mkdir appdata
@@ -32,7 +28,7 @@ clean: dc_rm_all
 	@rm -rf .dev_meta
 
 run:
-	python main.py
+	python -m app
 
 pretty:
 	isort . && black . && flake8 .

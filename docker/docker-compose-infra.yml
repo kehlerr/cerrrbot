@@ -31,6 +31,33 @@ services:
       cerrrbot-network:
         aliases:
           - "${CERRRBOT_MONGO_HOST}"
+  telegram-bot-api:
+    image: aiogram/telegram-bot-api:latest
+    container_name: "${CERRRBOT_TG_API_SERVER_CONTAINER_NAME}"
+    ports:
+      - "8081:8081"
+    environment:
+      TELEGRAM_API_ID: "${CERRRBOT_TG_API_ID}"
+      TELEGRAM_API_HASH: "${CERRRBOT_TG_API_HASH}"
+      TELEGRAM_LOCAL: "true"
+      TELEGRAM_VERBOSITY: 3
+      TELEGRAM_WORK_DIR: "${CERRRBOT_TG_API_SERVER_WORK_DIR}"
+    entrypoint: [ 'sh', '-c', 'chmod -R g+w "$$TELEGRAM_WORK_DIR" && /docker-entrypoint.sh' ]
+    volumes:
+      - cerrrbot-data:${CERRRBOT_TG_API_SERVER_WORK_DIR}
+    networks:
+      cerrrbot-network:
+        aliases:
+          - "${CERRRBOT_TG_API_SERVER_HOST}"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  cerrrbot-data:
+    name: cerrrbot-data
+    external: true
+  cerrrbot-mongo-data:
+    name: cerrrbot-mongo-data
 
 networks:
   cerrrbot-network:
