@@ -4,25 +4,26 @@ import asyncio
 import logging
 
 from aiogram import Bot, Dispatcher, Router
+from aiogram.types import StoryAreaTypeUnion
 from dishka import make_async_container
 from dishka.integrations.aiogram import setup_dishka
 
-from app.ioc import AppProvider
+from app import app_settings
 
+from app.bot import handlers_router, make_scheduler, create_periodic_tasks, CheckUserMiddleware
+from app.bot.cerrrbot import CerrrBot
+from app.bot.commands import load_commands
 from app.celery_app import app as _  # noqa: F401
-from app.commands import load_commands
-from app.infrastructure.database import check_connection
 from app.actions.discovery import discover_actions
 from app.actions.ioc import ActionsProvider
+from app.infrastructure.database import check_connection
+from app.ioc import AppProvider
 
-from app.bot import router, make_scheduler, create_periodic_tasks, CheckUserMiddleware
-from app.bot.cerrrbot import CerrrBot
-from app.settings import LOGGING_LEVEL
 
 
 def setup_logger() -> logging.Logger:
     logger = logging.getLogger("cerrrbot")
-    logger.setLevel(LOGGING_LEVEL)
+    logger.setLevel(app_settings.logging_level)
     log_handler_stream = logging.StreamHandler()
     formatter = logging.Formatter(
         "[%(levelname)s][%(asctime)s] %(message)s", "%m/%d/%Y-%H:%M:%S"
@@ -50,7 +51,7 @@ async def main():
     main_router.message.middleware(CheckUserMiddleware())
     main_router.callback_query.middleware(CheckUserMiddleware())
     load_commands(main_router)
-    main_router.include_router(router)
+    main_router.include_router(handlers_router)
 
     dp = Dispatcher()
 

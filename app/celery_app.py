@@ -1,7 +1,7 @@
 from celery import Celery, Task
 
-from app.plugins_manager import plugins_manager
-from app.settings import CELERY_BACKEND_DB, CELERY_BROKER_DB, REDIS_HOST, REDIS_PORT
+from app.infrastructure import infrastructure_settings
+from app.plugins_manager import plugins_manager 
 
 
 class TestTask(Task):
@@ -10,10 +10,6 @@ class TestTask(Task):
         return data
 
 
-app = Celery(
-    "tasks",
-    broker=f"redis://{REDIS_HOST}:{REDIS_PORT}/{CELERY_BROKER_DB}",
-    backend=f"redis://{REDIS_HOST}:{REDIS_PORT}/{CELERY_BACKEND_DB}",
-)
+app = Celery("tasks", broker=infrastructure_settings.celery_broker, backend=infrastructure_settings.celery_backend)
 
 plugins_manager.load_tasks(app)

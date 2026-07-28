@@ -3,16 +3,10 @@ from typing import Any, AsyncIterator
 import orjson as json
 from redis.asyncio import Redis
 
-from app.settings import REDIS_HOST, CACHE_DEFAULT_DB, REDIS_PORT
-
 from .exceptions import DuplicatedEntryError, EntryNotFoundError
 
 
 class RedisRepository:
-    HOST: str = REDIS_HOST
-    PORT: str = REDIS_PORT
-    DB_IDX: int = CACHE_DEFAULT_DB
-
     KEY_PREFIX: str
     KEY_PREFIX_DELIMITER: str = ":"
 

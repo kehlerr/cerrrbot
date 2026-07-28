@@ -3,8 +3,8 @@ from typing import Any, Awaitable, Callable
 
 from aiogram import BaseMiddleware
 from aiogram.types import Message
-from app.settings import ALLOWED_USERS
 
+from app import app_settings
 
 logger = getLogger("cerrrbot")
 
@@ -16,7 +16,7 @@ class CheckUserMiddleware(BaseMiddleware):
         message: Message,  # type: ignore
         data: dict[str, Any],
     ) -> Any:
-        if (user_sender := message.from_user) and user_sender.id in ALLOWED_USERS:
+        if (user_sender := message.from_user) and user_sender.id in app_settings.allowed_users:
             return await handler(message, data)
 
         logger.warning(

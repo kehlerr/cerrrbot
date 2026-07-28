@@ -1,5 +1,5 @@
+from app import app_settings
 from app.models import MessageAction
-from app.settings import DELETE_TIMEOUT_1, DELETE_TIMEOUT_2, DELETE_TIMEOUT_3
 from app.types import ExecutorCode
 
 from .exceptions import DuplicateActionLoadedError
@@ -28,21 +28,21 @@ class _MESSAGE_ACTIONS:
         caption="Del in 15m",
         order=2,
         executor_code=ExecutorCode.DELETE_AFTER_TIME,
-        executor_args={"timeout": DELETE_TIMEOUT_1},
+        executor_args={"timeout": app_settings.delete_timeout_1},
     )
     DELETE_2 = MessageAction(
         code="DEL2",
         caption="Del in 12H",
         order=3,
         executor_code=ExecutorCode.DELETE_AFTER_TIME,
-        executor_args={"timeout": DELETE_TIMEOUT_2},
+        executor_args={"timeout": app_settings.delete_timeout_2},
     )
     DELETE_3 = MessageAction(
         code="DEL3",
         caption="Del in 48H",
         order=4,
         executor_code=ExecutorCode.DELETE_AFTER_TIME,
-        executor_args={"timeout": DELETE_TIMEOUT_3},
+        executor_args={"timeout": app_settings.delete_timeout_3},
     )
 
     TASK_STATUS = MessageAction(

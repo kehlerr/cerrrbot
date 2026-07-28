@@ -1,7 +1,7 @@
 from redis import asyncio as aioredis
 
-from app.settings import REDIS_HOST, REDIS_PORT, REDIS_DB
+from .settings import infrastructure_settings
 
 
 async def make_redis_client() -> aioredis.Redis:
-    return await aioredis.from_url(f"redis://{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB}")
+    return await aioredis.from_url(infrastructure_settings.redis_client_url)
