@@ -1,10 +1,17 @@
 import os
-from typing import Any
+from enum import StrEnum
+from typing import Any, Self
 
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.exceptions import InvalidSettingError
+
+
+class BotMode(StrEnum):
+    AUTO = "auto"
+    WEBHOOK = "webhook"
+    POLLING = "polling"
 
 
 class Settings(BaseSettings):
@@ -20,8 +27,6 @@ class Settings(BaseSettings):
     http_scheme: str = Field(default="http")
     logging_level: str = Field(default="DEBUG" if debug else "INFO")
 
-    # Bot TG-related settings
-    token: str = Field(validation_alias="CERRRBOT_TOKEN")
     max_load_file_size: int = Field(default=20_000_000)
 
     # Bot app-related settings
@@ -79,7 +84,7 @@ class Settings(BaseSettings):
         raise InvalidSettingError(f"Invalid value for allowed users: {v}")
 
     @model_validator(mode="after")
-    def compute_defaults_and_validate_paths(self) -> "Settings":
+    def compute_defaults_and_validate_paths(self) -> Self:
         if not self.http_scheme:
             self.http_scheme = "http" if self.debug else "https"
         else:
@@ -107,9 +112,7 @@ DEBUG = settings.debug
 SCHEME = settings.http_scheme
 LOGGING_LEVEL = settings.logging_level
 
-BOT_TOKEN = settings.token
 ALLOWED_USERS = settings.allowed_users
-
 MAX_LOAD_FILE_SIZE = settings.max_load_file_size
 DATA_DIRECTORY_ROOT = settings.data_root
 CUSTOM_MESSAGE_MIN_ORDER = settings.custom_message_min_order
