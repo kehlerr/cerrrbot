@@ -6,7 +6,6 @@ from typing import Iterator
 from aiogram import Router
 from celery import Task
 
-from app.actions import MessageActions
 from app.models import PluginModel, MessageAction, CustomMessageAction
 from app.settings import PLUGINS_DIR_PATH, PLUGINS_MODULE_NAME
 
@@ -35,6 +34,7 @@ class PluginsManager:
             logger.info("No plugins loaded")
 
     def _load_actions(self) -> None:
+        from app.actions import MessageActions
         loaded_actions: list[MessageAction | CustomMessageAction] = []
         for plugin in self._plugins:
             loaded_actions.extend(plugin.actions)

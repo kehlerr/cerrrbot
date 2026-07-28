@@ -16,21 +16,26 @@ from app.actions.discovery import discover_actions
 from app.actions.ioc import ActionsProvider
 
 from app.bot import router, make_scheduler, create_periodic_tasks, CheckUserMiddleware
-from app.settings import BOT_TOKEN, LOGGING_LEVEL
+from app.bot.cerrrbot import CerrrBot
+from app.settings import LOGGING_LEVEL
 
 
-logger = logging.getLogger("cerrrbot")
-logger.setLevel(LOGGING_LEVEL)
-log_handler_stream = logging.StreamHandler()
-formatter = logging.Formatter(
-    "[%(levelname)s][%(asctime)s] %(message)s", "%m/%d/%Y-%H:%M:%S"
-)
-log_handler_stream.setFormatter(formatter)
-logger.addHandler(log_handler_stream)
+def setup_logger() -> logging.Logger:
+    logger = logging.getLogger("cerrrbot")
+    logger.setLevel(LOGGING_LEVEL)
+    log_handler_stream = logging.StreamHandler()
+    formatter = logging.Formatter(
+        "[%(levelname)s][%(asctime)s] %(message)s", "%m/%d/%Y-%H:%M:%S"
+    )
+    log_handler_stream.setFormatter(formatter)
+    logger.addHandler(log_handler_stream)
+    return logger
 
 
 
 async def main():
+    logger = setup_logger()
+
     logger.info("Starting bot...")
 
     logger.info("Checking database connection...")
@@ -39,7 +44,7 @@ async def main():
         return
     logger.info("Database is reachable and online.")
 
-    cerrrbot = Bot(token=BOT_TOKEN)
+    cerrrbot = CerrrBot.create()
 
     main_router = Router()
     main_router.message.middleware(CheckUserMiddleware())
@@ -63,13 +68,8 @@ async def main():
 
     dp.include_router(main_router)
 
-    logger.info("Bot set up. Starting polling...")
-    await dp.start_polling(cerrrbot)
+    await cerrrbot.start(dp)
 
 
 if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-    except Exception as exc:
-        logger.exception(str(exc))
-        exit(-1)
+    asyncio.run(main())
