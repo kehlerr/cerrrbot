@@ -3,10 +3,11 @@ import logging
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
+from app import app_settings
+
 from app.actions import MessageActions
 from app.exceptions import InvalidMessageDocumentError
 from app.models import MessageDocument, SVM_ReplyInfo, ActionResult, MessageAction
-from app.settings import CUSTOM_MESSAGE_MIN_ORDER
 from app.types import ActionCallbackData
 
 
@@ -57,7 +58,7 @@ class MenuPresenter:
                     action=action.code, msgdoc_id=msgdoc.id
                 ).pack(),
             )
-            if action.order >= CUSTOM_MESSAGE_MIN_ORDER:
+            if action.order >= app_settings.custom_message_min_order:
                 custom_actions_buttons.setdefault(action.order // 100, []).append(button)
             else:
                 actions_buttons.append(button)

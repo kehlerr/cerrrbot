@@ -4,7 +4,7 @@ from aiogram import Bot
 from apscheduler.schedulers.asyncio import AsyncIOScheduler  # type: ignore
 from dishka import AsyncContainer
 
-from app.settings import CHECK_NOTIFICATIONS_CD_PERIOD, CHECK_DEPRECATED_MESSAGES_CD_PERIOD, CHECK_NEW_MESSAGES_CD_PERIOD
+from app import app_settings
 
 from .handlers import perform_message_actions, delete_deprecated_messages, process_notifications
 
@@ -13,7 +13,7 @@ async def create_periodic_tasks(scheduler: AsyncIOScheduler, bot: Bot, app_conta
     scheduler.add_job(
         _execute_di_job,
         "interval",
-        seconds=CHECK_NEW_MESSAGES_CD_PERIOD,
+        seconds=app_settings.check_new_messages_cd_period,
         args=[
             app_container,
             perform_message_actions,
@@ -26,7 +26,7 @@ async def create_periodic_tasks(scheduler: AsyncIOScheduler, bot: Bot, app_conta
     scheduler.add_job(
         _execute_di_job,
         "interval",
-        seconds=CHECK_DEPRECATED_MESSAGES_CD_PERIOD,
+        seconds=app_settings.check_deprecated_messages_cd_period,
         args=[
             app_container,
             delete_deprecated_messages,
@@ -39,7 +39,7 @@ async def create_periodic_tasks(scheduler: AsyncIOScheduler, bot: Bot, app_conta
     scheduler.add_job(
         _execute_di_job,
         "interval",
-        seconds=CHECK_NOTIFICATIONS_CD_PERIOD,
+        seconds=app_settings.check_notifications_cd_period,
         args=[
             app_container,
             process_notifications,

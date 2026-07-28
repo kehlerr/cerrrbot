@@ -1,10 +1,10 @@
 import re
 from typing import Any
 
-from app.settings import CUSTOM_MESSAGE_MIN_ORDER
 from httpx import URL
 from pydantic import BaseModel, Field
 
+from app import app_settings
 from app.types import MessageActionCode, ExecutorCode
 
 
@@ -26,7 +26,7 @@ class MessageAction(BaseModel):
 
 
 class CustomMessageAction(MessageAction):
-    order: int = Field(gt=CUSTOM_MESSAGE_MIN_ORDER)
+    order: int = Field(gt=app_settings.custom_message_min_order)
     executor_code: ExecutorCode = ExecutorCode.CUSTOM
 
     def __init__(self, **data):

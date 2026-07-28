@@ -1,7 +1,5 @@
-
+from app import app_settings
 from app.repositories import CachedModelRepository
-
-from app.settings import NOTIFICATIONS_CACHE_KEY_PREFIX
 
 from .notification import Notification
 
@@ -9,4 +7,4 @@ from .notification import Notification
 class NotificationRepository(CachedModelRepository):
     model_class = Notification
 
-    KEY_PREFIX = NOTIFICATIONS_CACHE_KEY_PREFIX
+    KEY_PREFIX = app_settings.notifications_cache_key_prefix

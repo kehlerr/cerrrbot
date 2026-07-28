@@ -3,7 +3,7 @@ from logging import getLogger
 
 from aiogram import Bot
 
-from app.settings import DATA_DIRECTORY_ROOT
+from app import app_settings
 
 from .exceptions import DownloadFileError
 
@@ -21,11 +21,11 @@ def create_directory(directory_name: str) -> str:
 
 
 def get_directory_path(directory_path: str) -> str:
-    return os.path.join(DATA_DIRECTORY_ROOT, directory_path)
+    return os.path.join(app_settings.data_root, directory_path)
 
 
 async def save_file(bot: Bot, file_id: str, file_name: str, dir_name: str) -> None:
-    dir_path = os.path.join(DATA_DIRECTORY_ROOT, dir_name)
+    dir_path = get_directory_path(dir_name)
     if not os.path.exists(dir_path):
         os.mkdir(dir_path)
 

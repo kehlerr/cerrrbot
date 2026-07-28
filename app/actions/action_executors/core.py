@@ -5,11 +5,12 @@ from typing import Any
 from aiogram import Bot
 from aiogram.types import ContentType
 
+from app import app_settings
+
 from app.actions import MessageActions
 from app.file_ops import FileDownloader
 from app.models import ActionResult, MessageDocument
 from app.repositories.message_repository import MessageRepository
-from app.settings import DELETE_TIMEOUT_1, DELETE_TIMEOUT_2, DELETE_TIMEOUT_3
 
 from app.types import ExecutorCode
 
@@ -54,9 +55,9 @@ class DeleteRequestActionExecutor(ActionExecutor):
 
     async def _execute_impl(self, msgdoc: MessageDocument, bot: Bot, *, new_repo: MessageRepository, **_: Any) -> ActionResult:
         actions_data = {
-            MessageActions.DELETE_1: {"timeout": DELETE_TIMEOUT_1},
-            MessageActions.DELETE_2: {"timeout": DELETE_TIMEOUT_2},
-            MessageActions.DELETE_3: {"timeout": DELETE_TIMEOUT_3},
+            MessageActions.DELETE_1: {"timeout": app_settings.delete_timeout_1},
+            MessageActions.DELETE_2: {"timeout": app_settings.delete_timeout_2},
+            MessageActions.DELETE_3: {"timeout": app_settings.delete_timeout_3},
             MessageActions.DELETE_NOW: {},
         }
 

@@ -18,10 +18,10 @@ from .menu_presenter import MenuPresenter
 logger = logging.getLogger("cerrrbot")
 
 
-router = Router()
+handlers_router = Router()
 
 
-@router.message()
+@handlers_router.message()
 @inject
 async def on_received_message(message: Message, bot: Bot, savmes_service: FromDishka[SavmesService]) -> None:
     logger.debug(f"Received new message: {message}")
@@ -46,7 +46,7 @@ async def on_received_message(message: Message, bot: Bot, savmes_service: FromDi
     await savmes_service.set_reply_action_message_id(msgdoc, reply_action_message.message_id)
 
 
-@router.callback_query(ActionCallbackData.filter(F.action.in_(MessageActions.BY_CODE)))
+@handlers_router.callback_query(ActionCallbackData.filter(F.action.in_(MessageActions.BY_CODE)))
 @inject
 async def on_action_pressed(
     query: CallbackQuery, callback_data: ActionCallbackData, bot: Bot, savmes_service: FromDishka[SavmesService]

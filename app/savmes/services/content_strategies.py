@@ -3,9 +3,10 @@ from typing import Mapping
 
 from aiogram.types import ContentType
 
+from app import app_settings
+
 from app.actions import MessageActions
 from app.models import ActionsData, MessageAction, MessageDocument, PreparedMessageInfo
-from app.settings import MAX_LOAD_FILE_SIZE, TIMEOUT_BEFORE_DEFAULT_ACTION_PERFORMS
 
 from .message_parser import MessageParser
 
@@ -14,7 +15,7 @@ logger = logging.getLogger("cerrrbot")
 
 
 class ContentStrategyBase:
-    DEFAULT_MESSAGE_TTL = TIMEOUT_BEFORE_DEFAULT_ACTION_PERFORMS
+    DEFAULT_MESSAGE_TTL = app_settings.timeout_before_default_action_performs
     DEFAULT_ACTION = MessageActions.DELETE_1
 
     POSSIBLE_ACTIONS = {
@@ -80,7 +81,7 @@ class _DownloadableContentStrategy(ContentStrategy):
             if cls.content_type_key == ContentType.PHOTO
             else getattr(msgdoc, cls.content_type_key).file_size
         )
-        if MAX_LOAD_FILE_SIZE < 0 or fsize < MAX_LOAD_FILE_SIZE:
+        if app_settings.max_load_file_size < 0 or fsize < app_settings.max_load_file_size:
             message_info.action = MessageActions.DOWNLOAD
             if message_actions and msgdoc.media_group_id:
                 message_actions.pop(MessageActions.DOWNLOAD)

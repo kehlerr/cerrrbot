@@ -12,7 +12,10 @@ from aiogram.types import (
     Animation,
     VideoQuality,
 )
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from app.exceptions import InvalidSettingError
 
 
 DownloadableContentType = PhotoSize | Video | VideoNote | Document | Sticker | Audio | Animation | VideoQuality
@@ -23,6 +26,23 @@ TPydanticModel = TypeVar("TPydanticModel", bound=BaseModel)
 
 
 MessageActionCode = str
+
+
+class CerrrBotSettings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_prefix="CERRRBOT_",
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
+
+
+
+class BotMode(StrEnum):
+    AUTO = "auto"
+    WEBHOOK = "webhook"
+    POLLING = "polling"
+
 
 class ExecutorCode(StrEnum):
     NONE = "none"

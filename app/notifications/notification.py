@@ -2,12 +2,12 @@ from datetime import datetime, timezone
 
 from pydantic import BaseModel
 
-from app.settings import ALLOWED_USERS
+from app import app_settings
 
 
 class Notification(BaseModel):
     text: str
-    chat_id: str = ALLOWED_USERS[0]
+    chat_id: int = app_settings.main_user_chat
     reply_to_message_id: int = 0
     send_at: int = 0
     send_count: int = 1

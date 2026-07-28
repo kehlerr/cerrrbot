@@ -3,18 +3,18 @@ from typing import Any, AsyncIterator, cast
 from redis.asyncio.client import Redis
 
 
-from app.settings import CACHE_DEFAULT_KEY_PREFIX
-
-from .redis import RedisRepository
+from app import app_settings
 
 from app.types import TPydanticModel, PydanticModelClass
+
+from .redis import RedisRepository
 
 
 
 class CachedModelRepository[TPydanticModel]:
     model_class: type[TPydanticModel]
 
-    KEY_PREFIX = CACHE_DEFAULT_KEY_PREFIX
+    KEY_PREFIX = app_settings.cache_default_key_prefix
 
     def __init__(self, redis_client: Redis, model_class: type[TPydanticModel] | None = None) -> None:
         self._redis_repository = RedisRepository(redis_client, key_prefix=self.KEY_PREFIX)
