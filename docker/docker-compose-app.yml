@@ -1,5 +1,3 @@
-version: '3.9'
-
 services:
   app-bot:
     image: "${APP_IMAGE_NAME}"
