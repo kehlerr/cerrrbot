@@ -6,13 +6,12 @@ from typing import Mapping, ClassVar, cast
 
 from aiogram import Bot
 
-from aiogram.types import ContentType, Sticker
-
 from app.exceptions import InvalidMessageDocumentError
-from app.models import MessageDocument
-from app.types import DownloadableContentType, TDownloadableVariant
+from app.models import MessageDocument, MediaAttachment
+from app.models.message_media import StickerAttachment
+from app.types import ContentType
 
-from .exceptions import FileVariantError, InvalidStickerSetError
+from .exceptions import InvalidStickerSetError
 from .ops import save_file
 
 logger = logging.getLogger("cerrrbot")
@@ -54,81 +53,91 @@ class FileDownloader:
     async def _download(cls, msgdoc: MessageDocument, bot: Bot) -> None:
         logger.info(f"[{msgdoc.id}] Start downloading file...")
 
-        await cls._download_file_impl(msgdoc, getattr(msgdoc, msgdoc.content_type), bot)
+        if not (media_attachments := msgdoc.get_media_attachments(msgdoc.content_type)):
+            raise # TODO: proper exception
+
+        for media_attachment in media_attachments:
+            await cls._download_file_impl(msgdoc, media_attachment, bot)
 
         logger.info(f"[{msgdoc.id}] File successfully downloaded.")
 
     @classmethod
     async def _download_stickerpack(cls, msgdoc: MessageDocument, bot: Bot) -> None:
-        if not msgdoc.sticker:
+        if not msgdoc.media or not (sticker := msgdoc.media.sticker):
             raise InvalidMessageDocumentError(detail="Message has no sticker")
 
-        if not (sticker_set_name := msgdoc.sticker.set_name):
+        if not (sticker_set_name := sticker.set_name):
             raise InvalidStickerSetError(detail="Sticker has no set name")
 
         try:
             sticker_set = await bot.get_sticker_set(sticker_set_name)
         except Exception as get_sticker_set_exc:
-            raise InvalidStickerSetError(detail=f"Error occured while getting sticker set: {sticker_set_name}") from get_sticker_set_exc
+            raise InvalidStickerSetError(
+                detail=f"Error occured while getting sticker set: {sticker_set_name}"
+            ) from get_sticker_set_exc
 
         for sticker in sticker_set.stickers:
-            await cls._download_file_impl(msgdoc, sticker, bot, dir_name=sticker_set_name)
+            await cls._download_file_impl(msgdoc, cast(MediaAttachment, sticker), bot, dir_name=sticker_set_name)
 
     @classmethod
     async def _download_file_impl(
         cls,
         msgdoc: MessageDocument,
-        downloadable: TDownloadableVariant,
+        media_attachment: MediaAttachment,
         bot: Bot,
         dir_name: str | None = None,
     ) -> None:
-        if not (file_data := cls._best_quality_variant(downloadable)):
-            raise FileVariantError(f"File data variant is invalid: {downloadable}")
-
         if not dir_name:
             dir_name = datetime.now().strftime("%Y-%m")
 
-        file_name = cls._build_file_name(msgdoc, file_data, downloadable)
+        file_name = cls._build_file_name(msgdoc, media_attachment)
 
-        await save_file(bot, file_data.file_id, file_name, dir_name)
-
-    @classmethod
-    def _best_quality_variant(cls, downloadable_variant: TDownloadableVariant) -> DownloadableContentType | None:
-
-        if not isinstance(downloadable_variant, list):
-            return downloadable_variant or None
-
-        if len(downloadable_variant) > 1:
-            return sorted(
-                downloadable_variant, key=lambda v: getattr(v, cls.SORT_KEY), reverse=True
-            )[0]
-        else:
-            return downloadable_variant[0] if downloadable_variant else None
+        await save_file(bot, media_attachment.file_id, file_name, dir_name)
 
     @classmethod
-    def _build_file_name(cls, msgdoc: MessageDocument, file_data: DownloadableContentType, downloadable: TDownloadableVariant) -> str:
+    def _build_file_name(cls, msgdoc: MessageDocument, downloadable: MediaAttachment) -> str:
 
-        file_uid_hashed = hashlib.sha256(file_data.file_unique_id.encode()).hexdigest()[:8]
+        file_uid_hashed = hashlib.sha256(downloadable.file_unique_id.encode()).hexdigest()[:8]
 
         if msgdoc.content_type == ContentType.STICKER:
-            downloadable = cast(Sticker, downloadable)
+            downloadable = cast(StickerAttachment, downloadable)
             if downloadable.is_animated or downloadable.is_video:
                 ext = "webm"
             else:
                 ext = cls.FILE_EXTENSION_BY_CONTENT_TYPE[ContentType.STICKER]
             return f"{file_uid_hashed}.{ext}"
 
-        if forward_origin := msgdoc.forward_origin:
-            message_date = forward_origin.date
-        else:
-            message_date = msgdoc.date
+        message_date = msgdoc.get_message_origin_date()
 
         ext = None
-        if hasattr(file_data, "file_name") and (file_name := file_data.file_name):  # type: ignore[attr-defined]
+        if hasattr(downloadable, "file_name") and (file_name := getattr(downloadable, "file_name", None)):
             if suffix := Path(file_name).suffix.lstrip("."):
                 ext = suffix.lower()
 
         if not ext:
+            type_name = type(downloadable).__name__
+            if "Photo" in type_name:
+                ext = "jpg"
+            elif "VideoNote" in type_name:
+                ext = "mp4"
+            elif "Video" in type_name:
+                ext = "mp4"
+            elif "Animation" in type_name:
+                ext = "mp4"
+            elif "Audio" in type_name:
+                ext = "mp3"
+            elif "Voice" in type_name:
+                ext = "ogg"
+            elif "Sticker" in type_name:
+                ext = "webp"
+            elif hasattr(downloadable, "mime_type") and (mime := getattr(downloadable, "mime_type", None)):
+                import mimetypes
+                if guessed := mimetypes.guess_extension(mime):
+                    ext = guessed.lstrip(".").lower()
+
+        if not ext:
             ext = cls.FILE_EXTENSION_BY_CONTENT_TYPE.get(msgdoc.content_type, "bin")
 
-        return f"{msgdoc.get_message_source()}_{message_date.strftime('%Y-%m-%d_%H-%M-%S')}_{file_uid_hashed}.{ext}"
+        message_source = msgdoc.get_source_data()
+
+        return f"{message_source.source_id}_{message_date.strftime('%Y-%m-%d_%H-%M-%S')}_{file_uid_hashed}.{ext}"

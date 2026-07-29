@@ -1,26 +1,61 @@
-from __future__ import annotations
-
 import hashlib
 from datetime import datetime
-from typing import cast, Annotated, Any, Self, Sequence
+from typing import Annotated, Any, Self, Sequence, cast
 
 from aiogram.enums import MessageOriginType
-from aiogram.types import Message
-from pydantic import ConfigDict, BeforeValidator, Field
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 
 from app.actions import MessageActions
-
+from app.types import ContentType
 from .message_action import MessageAction
-from .message_document_info import ActionsMenuUpdating, ActionsMenuStored, SVM_MsgdocInfo, PreparedMessageInfo
-
+from .message_document_info import (
+    ActionsMenuStored,
+    ActionsMenuUpdating,
+    PreparedMessageInfo,
+    SVM_MsgdocInfo,
+)
+from .message_media import MediaAttachment, MessageMedia
+from .message_source import (
+    ChatInfo,
+    MessageSourceData,
+    MessageSourceInfo,
+    UserInfo,
+)
+from .message_text_info import (
+    MessageEntity,
+    MessageTextInfo,
+)
 
 
 PyObjectId = Annotated[str, BeforeValidator(str)]
 
-class MessageDocument(Message):
+
+class MessageDocument(BaseModel):
     id: PyObjectId | None = Field(default=None, alias="_id")
+    message_id: int = 0
+    date: datetime = Field(default_factory=datetime.now)
+    edit_date: datetime | None = None
+
+    content_type: ContentType = ContentType.TEXT
+
+    # Encapsulated Domain Components
+    source: MessageSourceInfo = Field(default_factory=MessageSourceInfo)
+    text_info: MessageTextInfo | None = None
+    media: MessageMedia | None = None
+
+    # Additional Telegram / Domain attributes
+    author_signature: str | None = None
+    via_bot: UserInfo | None = None
+    has_protected_content: bool | None = None
+    has_media_spoiler: bool | None = None
+    link_preview_options: dict[str, Any] | None = None
+    reply_to_message: dict[str, Any] | None = None
+
+    # Application Domain Specific Fields
+    media_group_id: str | None = None
     is_subsequent_in_media_group: bool = Field(default=False)
     cb_message_info: SVM_MsgdocInfo | None = None
+    raw_data: dict[str, Any] | None = None
 
     model_config = ConfigDict(
         use_enum_values=True,
@@ -33,19 +68,64 @@ class MessageDocument(Message):
         protected_namespaces=(),
     )
 
-    @classmethod
-    def from_message(cls, message: Message) -> Self:
-        return cls(**message.model_dump(by_alias=True, exclude_unset=True, exclude_none=True))
+    def __init__(self, id: str | None = None, **data: Any) -> None:
+        if id is not None and "_id" not in data and "id" not in data:
+            data["id"] = id
+        super().__init__(**data)
 
+    @classmethod
+    def from_message(cls, message: Any) -> Self:
+        raw_dump = message.model_dump(by_alias=True, exclude_unset=True, exclude_none=True)
+        doc = cls.model_validate(raw_dump)
+        doc.source = MessageSourceInfo.from_message(message)
+        doc.text_info = MessageTextInfo.from_message(message)
+        doc.media = MessageMedia.from_message(message)
+        if hasattr(message, "content_type"):
+            doc.content_type = ContentType.from_val(message.content_type)
+        if doc.media and doc.media.rich_message:
+            if doc.media.rich_message.extract_media_items():
+                doc.content_type = ContentType.RICH_MESSAGE_MEDIA
+            else:
+                doc.content_type = ContentType.RICH_MESSAGE_TEXT
+        doc.raw_data = raw_dump
+        return doc
+
+    # --- Source property proxies ---
+    @property
+    def chat(self) -> ChatInfo:
+        return self.source.chat if self.source else ChatInfo()
+
+    # --- Text property proxies ---
+    @property
+    def text(self) -> str | None:
+        return self.text_info.text if self.text_info else None
+
+    @property
+    def caption(self) -> str | None:
+        return self.text_info.caption if self.text_info else None
+
+    @property
+    def entities(self) -> list[MessageEntity] | None:
+        return self.text_info.entities if self.text_info else None
+
+    @property
+    def caption_entities(self) -> list[MessageEntity] | None:
+        return self.text_info.caption_entities if self.text_info else None
+
+    @property
+    def message_text(self) -> str | None:
+        return self.text_info.message_text if self.text_info else None
+
+    # --- Domain methods ---
     def get_current_action(self) -> MessageAction:
         if not self.cb_message_info:
-            raise ValueError("Message info is not set")
+            raise ValueError("Message info is not set")  # TODO: proper exception
 
         return self.cb_message_info.action
 
     def get_current_menu(self) -> ActionsMenuStored:
         if not self.cb_message_info:
-            raise ValueError("Message info is not set")
+            raise ValueError("Message info is not set")  # TODO: proper exception
 
         return self.cb_message_info.get_current_menu()
 
@@ -106,14 +186,12 @@ class MessageDocument(Message):
         actions_to_del: Sequence[MessageAction | str] | None,
         new_actions_menu: ActionsMenuUpdating | None,
     ) -> None:
-
         if self.cb_message_info is None:
             return
 
         msg_info = self.cb_message_info
         actions_menus = msg_info.actions_menus or []
         current_menu = msg_info.actions_menus.pop() if msg_info.actions_menus else {}
-        _old_menu_actions = set(current_menu)
 
         if actions_to_add is not None:
             for action, action_data in actions_to_add.items():
@@ -152,57 +230,33 @@ class MessageDocument(Message):
 
         msg_info.actions_menus = actions_menus
 
-    @property
-    def message_text(self):
-        return self.caption or self.text
+    def get_source_data(self) -> MessageSourceData:
+        if (
+            (forward_origin := self.source.forward_origin) and
+            (forward_origin_data := forward_origin.get_message_source_data(self.chat))
+        ):
+            return forward_origin_data
 
-    def get_from_chat_data(self) -> tuple[str, str]:
+        from_user = self.source.from_user
 
-        if self.forward_from:
-            return str(self.forward_from.id), (self.forward_from.username or self.forward_from.full_name)
+        user_id = from_user.id if from_user else None
+        title = from_user.full_name if from_user else self.chat.title or "unknown"
+        tag = from_user.username if from_user else self.chat.username
 
-        if forward_origin := self.forward_origin:
-            if forward_origin.type == MessageOriginType.USER:
-                user = forward_origin.sender_user
-                return str(user.id), (user.username or user.full_name)
-            elif forward_origin.type == MessageOriginType.HIDDEN_USER:
-                user_id = hashlib.sha256(forward_origin.sender_user_name.encode()).hexdigest()[:8]
-                return user_id, forward_origin.sender_user_name
-            elif forward_origin.type == MessageOriginType.CHAT:
-                chat = forward_origin.sender_chat
-                return str(chat.id), (chat.title or chat.username or "unknown")
-            elif forward_origin.type == MessageOriginType.CHANNEL:
-                chat = forward_origin.chat
-                return str(chat.id), (chat.title or chat.username or "unknown")
+        return MessageSourceData(chat_id=self.chat.id, user_id=user_id, title=title, tag=tag)
 
-        chat = self.forward_from_chat or self.chat
-        return str(chat.id), (chat.title or chat.username or "unknown")
+    def get_message_origin_date(self) -> datetime:
+        if forward_origin := self.source.forward_origin:
+            return forward_origin.date
 
-    def get_from_user_data(self) -> tuple[str | None, str | None]:
-        if not self.from_user:
-            return None, None
-        return str(self.from_user.id), self.from_user.username
+        return self.date
 
-    def get_message_source(self) -> str:
+    def get_media_attachments(self, content_type: ContentType) -> list[MediaAttachment] | None:
+        if not self.media:
+            return None
 
-        if not (forward_origin := self.forward_origin):
-            return str(self.chat.id)
+        attachment = self.media.get_content_attachment(content_type)
+        if isinstance(attachment, MediaAttachment):
+            return [attachment]
 
-        chat_id, user_id = None, None
-
-        if forward_origin.type == MessageOriginType.USER:
-            user_id = forward_origin.sender_user.id
-        elif forward_origin.type == MessageOriginType.HIDDEN_USER:
-            user_id = hashlib.sha256(forward_origin.sender_user_name.encode()).hexdigest()[:8]
-        elif forward_origin.type == MessageOriginType.CHAT:
-            chat_id = forward_origin.sender_chat.id
-        else:
-            chat_id = forward_origin.chat.id
-
-        if not chat_id:
-            chat_id = self.chat.id
-
-        if user_id:
-            return f"{chat_id}_{user_id}"
-
-        return str(chat_id)
+        return attachment

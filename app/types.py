@@ -2,29 +2,12 @@ from enum import StrEnum
 from typing import Any, TypeVar, Protocol, runtime_checkable
 
 from aiogram.filters.callback_data import CallbackData
-from aiogram.types import (
-    PhotoSize,
-    Video,
-    VideoNote,
-    Document,
-    Sticker,
-    Audio,
-    Animation,
-    VideoQuality,
-)
-from pydantic import BaseModel, Field, field_validator, model_validator
+
+from pydantic import BaseModel
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from app.exceptions import InvalidSettingError
-
-
-DownloadableContentType = PhotoSize | Video | VideoNote | Document | Sticker | Audio | Animation | VideoQuality
-
-TDownloadableVariant = DownloadableContentType | list[DownloadableContentType]
 
 TPydanticModel = TypeVar("TPydanticModel", bound=BaseModel)
-
-
 MessageActionCode = str
 
 
@@ -36,6 +19,38 @@ class CerrrBotSettings(BaseSettings):
         extra="ignore",
     )
 
+
+class ContentType(StrEnum):
+    UNKNOWN = "unknown"
+    TEXT = "text"
+    PHOTO = "photo"
+    STICKER = "sticker"
+    VIDEO = "video"
+    VIDEO_NOTE = "video_note"
+    VOICE = "voice"
+    HASHTAG = "hashtag"
+    CASHTAG = "cashtag"
+    BOT_COMMAND = "bot_command"
+    MESSAGE_AUTO_DELETE_TIMER_CHANGED = "message_auto_delete_timer_changed"
+    PINNED_MESSAGE = "pinned_message"
+    ANIMATION = "animation"
+    AUDIO = "audio"
+    DOCUMENT = "document"
+    STORY = "story"
+
+    # Extended content types for rich messages
+    RICH_MESSAGE_MEDIA = "rich_message_media"
+    RICH_MESSAGE_TEXT = "rich_message_text"
+
+    @classmethod
+    def from_val(cls, val: Any) -> "ContentType":
+        if isinstance(val, cls):
+            return val
+        s_val = str(val.value if hasattr(val, "value") else val)
+        try:
+            return cls(s_val)
+        except ValueError:
+            return cls.UNKNOWN
 
 
 class BotMode(StrEnum):

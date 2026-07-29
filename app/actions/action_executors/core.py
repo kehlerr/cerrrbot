@@ -3,7 +3,6 @@ from logging import getLogger
 from typing import Any
 
 from aiogram import Bot
-from aiogram.types import ContentType
 
 from app import app_settings
 
@@ -12,7 +11,7 @@ from app.file_ops import FileDownloader
 from app.models import ActionResult, MessageDocument
 from app.repositories.message_repository import MessageRepository
 
-from app.types import ExecutorCode
+from app.types import ContentType, ExecutorCode
 
 from .base import ActionExecutor
 
