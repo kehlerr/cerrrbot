@@ -4,7 +4,6 @@ import asyncio
 import logging
 
 from aiogram import Bot, Dispatcher, Router
-from aiogram.types import StoryAreaTypeUnion
 from dishka import make_async_container
 from dishka.integrations.aiogram import setup_dishka
 

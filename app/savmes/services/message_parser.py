@@ -1,10 +1,9 @@
 import re
 
-from aiogram.types import MessageEntity
 from httpx import URL
 
 from app.actions import MessageActions
-from app.models import ActionsData, MessageAction
+from app.models import ActionsData, MessageAction, MessageEntity
 
 _URL_PATTERN = "https?:\\/\\/(?:www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b(?:[-a-zA-Z0-9()@:%_\\+.~#?&\\/=]*)"
 URL_REGEX = re.compile(_URL_PATTERN, re.IGNORECASE)

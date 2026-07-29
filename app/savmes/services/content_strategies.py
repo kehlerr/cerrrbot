@@ -1,12 +1,11 @@
 import logging
 from typing import Mapping
 
-from aiogram.types import ContentType
-
 from app import app_settings
 
 from app.actions import MessageActions
 from app.models import ActionsData, MessageAction, MessageDocument, PreparedMessageInfo
+from app.types import ContentType
 
 from .message_parser import MessageParser
 
@@ -76,11 +75,16 @@ class _DownloadableContentStrategy(ContentStrategy):
         message_info = super().prepare_message_info(msgdoc)
         message_actions = message_info.actions_menu
 
-        fsize: int = (
-            0
-            if cls.content_type_key == ContentType.PHOTO
-            else getattr(msgdoc, cls.content_type_key).file_size
-        )
+        target_attr = getattr(msgdoc, cls.content_type_key, None)
+        fsize: int = 0
+        if (
+            cls.content_type_key == ContentType.PHOTO
+            or cls.content_type_key == ContentType.RICH_MESSAGE_MEDIA
+        ):
+            fsize = 0
+        elif target_attr and hasattr(target_attr, "file_size"):
+            fsize = getattr(target_attr, "file_size") or 0
+
         if app_settings.max_load_file_size < 0 or fsize < app_settings.max_load_file_size:
             message_info.action = MessageActions.DOWNLOAD
             if message_actions and msgdoc.media_group_id:
@@ -128,6 +132,10 @@ class StickerContentStrategy(_DownloadableContentStrategy):
     }
 
 
+class RichMessageMediaContentStrategy(_DownloadableContentStrategy):
+    content_type_key: str = ContentType.RICH_MESSAGE_MEDIA
+
+
 cls_strategy_by_content_type: Mapping[str | ContentType, type[ContentStrategy]] = {
     ContentType.TEXT: ContentStrategy,
     ContentType.PHOTO: PhotoContentStrategy,
@@ -138,4 +146,6 @@ cls_strategy_by_content_type: Mapping[str | ContentType, type[ContentStrategy]] 
     ContentType.VIDEO_NOTE: VideonoteContentStrategy,
     ContentType.VOICE: VoiceContentStrategy,
     ContentType.DOCUMENT: DocumentContentStrategy,
+    ContentType.RICH_MESSAGE_MEDIA: RichMessageMediaContentStrategy,
+    ContentType.RICH_MESSAGE_TEXT: ContentStrategy,
 }
