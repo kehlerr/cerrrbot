@@ -21,8 +21,7 @@ class RedisRepository:
     async def get_all(self, key_pattern: str | None = None) -> dict[str, bytes]:
         key_pattern = key_pattern or self.KEY_ALL
         result: dict[str, bytes] = {}
-        async for keyb in self._client.scan_iter(key_pattern):
-            key = keyb.decode()
+        async for key in self._client.scan_iter(key_pattern):
             entry = await self.select(key)
             result[key] = entry
         return result
@@ -33,8 +32,8 @@ class RedisRepository:
 
         batch_size = batch_size or self.BATCH_SIZE
 
-        async for keyb in self._client.scan_iter(key_pattern):
-            batch_keys.append(keyb.decode())
+        async for key in self._client.scan_iter(key_pattern):
+            batch_keys.append(key)
 
             if len(batch_keys) >= batch_size:
                 values: list[bytes | None] = await self._client.mget(batch_keys)

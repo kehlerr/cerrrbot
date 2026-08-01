@@ -1,10 +1,9 @@
 from typing import Any, AsyncIterator, cast
 
+import orjson as json
 from redis.asyncio.client import Redis
 
-
 from app import app_settings
-
 from app.types import TPydanticModel, PydanticModelClass
 
 from .redis import RedisRepository
@@ -21,9 +20,9 @@ class CachedModelRepository[TPydanticModel]:
         self._model_class = cast(PydanticModelClass[TPydanticModel], model_class or self.model_class)
 
     async def iter_all(self, key_pattern: str | None = None, batch_size: int = 500) -> AsyncIterator[tuple[str, TPydanticModel]]:
-        async for key, entry_bytes in self._redis_repository.iter_all_raw(key_pattern, batch_size):
-            if entry_bytes is not None:
-                yield key, self.model_load(entry_bytes)
+        async for key, entry in self._redis_repository.iter_all_raw(key_pattern, batch_size):
+            if entry is not None:
+                yield key, self.model_load(entry)
 
     async def insert(self, key: str, obj: TPydanticModel) -> None:
         payload = self.model_dump(obj)
@@ -36,8 +35,8 @@ class CachedModelRepository[TPydanticModel]:
     async def delete(self, key: str) -> None:
         return await self._redis_repository.delete(key)
 
-    def model_load(self, data: bytes) -> TPydanticModel:
-        return self._model_class.model_validate(data)
+    def model_load(self, data: str | bytes) -> TPydanticModel:
+        return self._model_class.model_validate(json.loads(data))
 
     def model_dump(self, data: TPydanticModel) -> dict[str, Any]:
         return cast(PydanticModelClass[TPydanticModel], data).model_dump(
