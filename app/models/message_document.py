@@ -247,7 +247,7 @@ class MessageDocument(BaseModel):
         from_user = self.source.from_user
 
         user_id = from_user.id if from_user else None
-        title = from_user.full_name if from_user else self.chat.title or "unknown"
+        title = from_user.full_name if from_user else self.chat.title
         tag = from_user.username if from_user else self.chat.username
 
         return MessageSourceData(chat_id=self.chat.id, user_id=user_id, title=title, tag=tag)
