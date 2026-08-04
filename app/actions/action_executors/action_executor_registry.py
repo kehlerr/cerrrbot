@@ -41,7 +41,7 @@ class ActionExecutorRegistry:
         if self._actions.pop(code, None):
             logger.debug(f"Action '{code}' unregistered.")
 
-    async def execute(self, action: MessageAction, msgdoc: MessageDocument, bot: Bot, **kwargs: dict[str, Any]) -> ActionResult:
+    async def execute(self, action: MessageAction, msgdoc: MessageDocument, bot: Bot, **kwargs: Any) -> ActionResult:
 
         action_code = action.executor_code
 
