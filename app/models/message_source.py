@@ -83,7 +83,7 @@ class MessageSourceInfo(BaseModel):
 class MessageSourceData:
     chat_id: int
     user_id: int | None = None
-    title: str = "unknown"
+    title: str | None = None
     tag: str | None = None
 
     @property
