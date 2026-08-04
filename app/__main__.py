@@ -3,8 +3,7 @@
 import asyncio
 import logging
 
-from aiogram import Bot, Dispatcher, Router
-from dishka import make_async_container
+from aiogram import Dispatcher, Router
 from dishka.integrations.aiogram import setup_dishka
 
 from app import app_settings
@@ -13,11 +12,9 @@ from app.bot import handlers_router, make_scheduler, create_periodic_tasks, Chec
 from app.bot.cerrrbot import CerrrBot
 from app.bot.commands import load_commands
 from app.celery_app import app as _  # noqa: F401
-from app.actions.discovery import discover_actions
-from app.actions.ioc import ActionsProvider
 from app.infrastructure.database import check_connection
-from app.ioc import AppProvider
-
+from app.ioc import get_app_container
+from app.plugins_manager import plugins_manager
 
 
 def setup_logger() -> logging.Logger:
@@ -46,6 +43,8 @@ async def main():
 
     cerrrbot = CerrrBot.create()
 
+    plugins_manager.load()
+
     main_router = Router()
     main_router.message.middleware(CheckUserMiddleware())
     main_router.callback_query.middleware(CheckUserMiddleware())
@@ -54,11 +53,7 @@ async def main():
 
     dp = Dispatcher()
 
-    container = make_async_container(
-        AppProvider(),
-        ActionsProvider(discover_actions("app.actions.action_executors")),
-        context={Bot: cerrrbot}
-    )
+    container = get_app_container(cerrrbot)
 
     scheduler = make_scheduler()
     await create_periodic_tasks(scheduler, cerrrbot, container)

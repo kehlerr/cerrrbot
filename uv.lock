@@ -321,7 +321,7 @@ dev = [
 [[package]]
 name = "cerrrbot-plugins"
 version = "1.0.0"
-source = { virtual = "app/plugins" }
+source = { editable = "app/plugins" }
 dependencies = [
     { name = "psutil" },
     { name = "python-magic" },

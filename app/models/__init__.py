@@ -10,7 +10,6 @@ from .message_document_info import (
     SVM_ReplyInfo,
 )
 from .message_text_info import MessageEntity
-from .plugin_model import PluginModel
 from .action_result import ActionResult
 
 
@@ -22,7 +21,6 @@ __all__ = (
     "MessageAction",
     "MessageDocument",
     "MessageEntity",
-    "PluginModel",
     "PreparedMessageInfo",
     "SVM_MsgdocInfo",
     "SVM_ReplyInfo",

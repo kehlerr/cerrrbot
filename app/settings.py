@@ -1,5 +1,6 @@
 import os
 from enum import StrEnum
+from pathlib import Path
 from typing import Any, Self
 
 from pydantic import Field, field_validator, model_validator
@@ -84,4 +85,4 @@ class AppSettings(CerrrBotSettings):
 app_settings = AppSettings()  # type: ignore[call-arg]
 
 PLUGINS_MODULE_NAME = "plugins"
-PLUGINS_DIR_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), PLUGINS_MODULE_NAME)
+PLUGINS_DIR_PATH = Path(__file__).relative_to(Path.cwd()).parent / PLUGINS_MODULE_NAME

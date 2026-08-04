@@ -7,6 +7,7 @@ from celery import signature, states
 from celery.contrib.abortable import AbortableAsyncResult as CeleryTaskResult
 
 from app.actions import MessageActions
+from app.actions.exceptions import MissingActionDataError
 from app.models import ActionResult, MessageDocument, MessageAction
 from app.repositories.message_repository import MessageRepository
 
@@ -30,12 +31,14 @@ class CustomActionExecutor(_TaskActionExecutor):
 
     code = ExecutorCode.CUSTOM
 
-    async def _execute_impl(self, msgdoc: MessageDocument, *, new_repo: MessageRepository, **task_info: Any) -> ActionResult:
+    async def _execute_impl(self, msgdoc: MessageDocument, *_: Any, new_repo: MessageRepository, **task_info: Any) -> ActionResult:
         action_code: str = task_info["code"]
         action = MessageActions.BY_CODE[action_code]
         action_data: dict[str, Any] = msgdoc.get_current_menu().get(action_code, {})
+        if not action_data:
+            raise MissingActionDataError(f"Action data not found for code {action_code}")
         if not (task_id := action_data.get("task_id")):
-            return await self._create_task(task_info, action_data["data"], action, msgdoc, new_repo=new_repo)
+            return await self._create_task(task_info, action_data["data"], action, msgdoc, repo=new_repo)
         return await self._get_task_reply(task_info, task_id, action, msgdoc, new_repo=new_repo)
 
     async def _create_task(
@@ -45,15 +48,15 @@ class CustomActionExecutor(_TaskActionExecutor):
         action: MessageAction,
         msgdoc: MessageDocument,
         *,
-        new_repo: MessageRepository,
+        repo: MessageRepository,
     ) -> ActionResult:
         task_signature = signature(
             task_info["task_name"], args=(task_args,), kwargs={"msgdoc_id": msgdoc.id, "code": action.code}
         )
         if task_info.get("is_instant", False):
-            task_signature()
-            await self._update_msgdoc_info(msgdoc, actions_to_del=(action,), new_repo=new_repo)
-            return ActionResult()
+            result = (await task_signature()).result()
+            await self._update_msgdoc_info(msgdoc, actions_to_del=(action,), new_repo=repo)
+            return result
 
         try:
             result = task_signature.delay()
@@ -68,7 +71,7 @@ class CustomActionExecutor(_TaskActionExecutor):
             "additional_caption": f" [{task_status}]",
         }
 
-        await self._update_msgdoc_info(msgdoc, actions_to_add={action: result_data}, new_repo=new_repo)
+        await self._update_msgdoc_info(msgdoc, actions_to_add={action: result_data}, new_repo=repo)
         return ActionResult()
 
     async def _get_task_reply(
@@ -98,7 +101,7 @@ class TaskGetStatusActionExecutor(_TaskActionExecutor):
 
     code = ExecutorCode.TASK_GET_STATUS
 
-    async def _execute_impl(self, msgdoc: MessageDocument, *, new_repo: MessageRepository, **task_info: Any) -> ActionResult:
+    async def _execute_impl(self, msgdoc: MessageDocument, *_: Any, new_repo: MessageRepository, **task_info: Any) -> ActionResult:
         status = self._get_task_status(task_info["task_id"])
         return ActionResult(popup_text=status)
 

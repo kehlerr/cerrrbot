@@ -15,11 +15,14 @@ dependencies = [
     "pydantic>=2.13.4",
     "pydantic-settings>=2.14.2",
     "pymongo>=4.17.0",
-    "redis>=8.0.1"
+    "redis>=8.0.1",
 ]
 
 [tool.uv.workspace]
-members = ["app/plugins/"]
+members = ["app/plugins"]
+
+[tool.uv.sources]
+cerrrbot-plugins = { workspace = true }
 
 [dependency-groups]
 dev = [
