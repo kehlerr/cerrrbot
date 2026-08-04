@@ -1,7 +1,7 @@
 from typing import AsyncIterable, NewType
 
 from aiogram import Bot
-from dishka import Provider, Scope, provide, from_context
+from dishka import Provider, Scope, provide, from_context, AsyncContainer
 from pymongo.asynchronous.database import AsyncDatabase
 from redis.asyncio import Redis
 
@@ -27,7 +27,7 @@ class AppProvider(Provider):
     async def get_mongo_db(self) -> AsyncIterable[AsyncDatabase]:
         mongo_db = db.get_mongo_db()
         yield mongo_db
-        mongo_db.client.close()
+        await mongo_db.client.close()
 
     @provide(scope=Scope.APP)
     async def get_redis(self) -> AsyncIterable[Redis]:
@@ -69,3 +69,30 @@ class AppProvider(Provider):
     @provide(scope=Scope.REQUEST)
     def get_notification_service(self, repo: NotificationRepository) -> NotificationService:
         return NotificationService(repo)
+
+
+_container: AsyncContainer | None = None
+
+
+def get_app_container(bot: Bot | None = None) -> AsyncContainer:
+    global _container
+    if _container is None:
+        from dishka import make_async_container
+        from app.bot.cerrrbot import CerrrBot
+        from app.actions.discovery import discover_actions
+        from app.actions.ioc import ActionsProvider
+
+        bot_instance = bot or CerrrBot.create()
+        _container = make_async_container(
+            AppProvider(),
+            ActionsProvider(discover_actions("app.actions.action_executors")),
+            context={Bot: bot_instance}
+        )
+    return _container
+
+
+def set_app_container(container: AsyncContainer) -> None:
+    global _container
+    _container = container
+
+

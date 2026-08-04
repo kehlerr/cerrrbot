@@ -1,7 +1,8 @@
+from typing import Any
 from celery import Celery, Task
 
+from app.plugins_manager import plugins_manager
 from app.infrastructure import infrastructure_settings
-from app.plugins_manager import plugins_manager 
 
 
 class TestTask(Task):
@@ -10,6 +11,11 @@ class TestTask(Task):
         return data
 
 
-app = Celery("tasks", broker=infrastructure_settings.celery_broker, backend=infrastructure_settings.celery_backend)
+class CeleryApp(Celery):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
 
-plugins_manager.load_tasks(app)
+        plugins_manager.load_tasks(self)
+
+
+app = CeleryApp("tasks", broker=infrastructure_settings.celery_broker, backend=infrastructure_settings.celery_backend)

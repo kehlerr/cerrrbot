@@ -7,23 +7,29 @@ class ActionError(AppError):
     detail = "Action error occured."
 
 
-class DuplicateActionLoadedError(AppError):
+class DuplicateActionLoadedError(ActionError):
 
     detail = "Action has duplicated code."
 
 
-class DuplicateActionExecutorError(AppError):
+class DuplicateActionExecutorError(ActionError):
 
     detail = "Action executor has duplicated code."
 
 
-class ActionNotFoundError(AppError):
+class ActionNotFoundError(ActionError):
     """Raised when trying to execute an unregistered action."""
 
     detail = "Action not found."
 
 
-class ActionExecutionError(AppError):
+class ActionExecutionError(ActionError):
     """Raised when a plugin crashes during execution to prevent orchestrator death."""
 
     detail = "Error occured on executing action."
+
+
+class MissingActionDataError(ActionError):
+    """Raised when action data is missing from a message document."""
+
+    detail = "Action data not found."
