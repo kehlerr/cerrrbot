@@ -21,6 +21,7 @@ class AppSettings(CerrrBotSettings):
     logging_level: str = Field(default="DEBUG" if debug else "INFO")
 
     max_load_file_size: int = Field(default=20_000_000)
+    message_ttl: int = Field(default=48 * 60 * 60 - 60 * 60)  # bot cannot operate with message that sent more than 48h ago
 
     # Bot app-related settings
     allowed_users: tuple[int, ...] = Field(default_factory=tuple)

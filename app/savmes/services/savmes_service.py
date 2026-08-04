@@ -4,6 +4,8 @@ from datetime import datetime, timedelta, UTC
 from aiogram import Bot
 from aiogram.types import Message
 
+from app import app_settings
+
 from app.actions import MessageActions
 from app.exceptions import AppError
 from app.models import ActionResult, MessageDocument
@@ -12,7 +14,6 @@ from app.actions.action_executors.action_executor_registry import ActionExecutor
 from app.types import MessageActionCode
 
 from ..repositories.cache import SavmesCacheRepository
-from ..constants import MESSAGE_DOCUMENT_TTL
 from .content_strategies import (
     ContentStrategy,
     CustomizableContentStrategy,
@@ -102,17 +103,13 @@ class SavmesService:
         return messages
 
     async def delete_deprecated_messages(self, bot: Bot) -> None:
-        await self._delete_deprecated_messages_from_repo(self._saved_messages_repo, bot)
-        await self._delete_deprecated_messages_from_repo(self._new_messages_repo, bot)
-
-    async def _delete_deprecated_messages_from_repo(self, repo: MessageRepository, bot: Bot) -> None:
         filter_search = {
             "date": {
-                "$lte": datetime.now(tz=UTC) - timedelta(seconds=MESSAGE_DOCUMENT_TTL),
+                "$lte": datetime.now(tz=UTC) - timedelta(seconds=app_settings.message_ttl),
             }
         }
 
-        msgdocs = await repo.get_messages_by_filter(filter_search)
+        msgdocs = await self._new_messages_repo.get_messages_by_filter(filter_search)
         logger.debug("Found {} deprecated messages".format(len(msgdocs)))
         for msgdoc in msgdocs:
-            await self._action_executor_registry.execute(MessageActions.DELETE_NOW, msgdoc, bot, new_repo=self._new_messages_repo, saved_repo=self._saved_messages_repo)
+            await msgdoc.delete_reply_message(bot)

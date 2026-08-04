@@ -74,15 +74,15 @@ class DeleteActionExecutor(ActionExecutor):
 
     code = ExecutorCode.DELETE
 
-    async def _execute_impl(self, msgdoc: MessageDocument, bot: Bot, *, new_repo: MessageRepository, **_: Any) -> ActionResult:
+    async def _execute_impl(self, msgdoc: MessageDocument, bot: Bot, *, new_repo: MessageRepository, **kwargs: Any) -> ActionResult:
         for related_msgdoc in await self.get_related_msgdocs(msgdoc, new_repo=new_repo):
             await self._delete_one(related_msgdoc, bot, new_repo=new_repo)
 
-        await self._delete_one(msgdoc, bot, new_repo=new_repo)
+        await self._delete_one(msgdoc, bot, new_repo=new_repo, **kwargs)
         return ActionResult(message_gone=True)
 
-    async def _delete_one(self, msgdoc: MessageDocument, bot: Bot, *, new_repo: MessageRepository) -> None:
-        await self.delete_from_chat(msgdoc, bot, new_repo=new_repo)
+    async def _delete_one(self, msgdoc: MessageDocument, bot: Bot, *, new_repo: MessageRepository, **kwargs: Any) -> None:
+        await self.delete_from_chat(msgdoc, bot, new_repo=new_repo, **kwargs)
         await new_repo.delete_msgdoc(msgdoc)
 
 

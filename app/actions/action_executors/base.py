@@ -22,7 +22,7 @@ class ActionExecutor:
             return []
         return await new_repo.get_many({"media_group_id": media_group_id})
 
-    async def delete_from_chat(self, msgdoc: MessageDocument, bot: Bot, *, new_repo: MessageRepository) -> None:
+    async def delete_from_chat(self, msgdoc: MessageDocument, bot: Bot, *, new_repo: MessageRepository, **_: Any) -> None:
         await self.delete_reply_message(msgdoc, bot, new_repo=new_repo)
         try:
             await bot.delete_message(msgdoc.chat.id, msgdoc.message_id)
@@ -30,15 +30,7 @@ class ActionExecutor:
             logger.warning(telegram_bad_request)
 
     async def delete_reply_message(self, msgdoc: MessageDocument, bot: Bot, *, new_repo: MessageRepository) -> None:
-        if not (message_id := msgdoc.cb_message_info and msgdoc.cb_message_info.reply_action_message_id):
-            logger.info("[%s] There is no reply message to delete", msgdoc.id)
-            return
-
-        try:
-            await bot.delete_message(msgdoc.chat.id, message_id)
-        except TelegramBadRequest as telegram_bad_request:
-            logger.warning(telegram_bad_request)
-
+        await msgdoc.delete_reply_message(bot)
         await self._update_msgdoc_info(msgdoc, new_action=None, new_actions_menu={}, reply_action_message_id=0, new_repo=new_repo)
 
     async def execute(self, msgdoc: MessageDocument, bot: Bot, **executor_args: Any) -> ActionResult:

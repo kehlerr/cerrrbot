@@ -2,7 +2,11 @@ import hashlib
 from datetime import datetime
 from typing import Annotated, Any, Self, Sequence, cast
 
+import logging
+
+from aiogram import Bot
 from aiogram.enums import MessageOriginType
+from aiogram.exceptions import TelegramBadRequest
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 
 from app.actions import MessageActions
@@ -25,6 +29,9 @@ from .message_text_info import (
     MessageEntity,
     MessageTextInfo,
 )
+
+
+logger = logging.getLogger("cerrrbot")
 
 
 PyObjectId = Annotated[str, BeforeValidator(str)]
@@ -260,3 +267,13 @@ class MessageDocument(BaseModel):
             return [attachment]
 
         return attachment
+
+    async def delete_reply_message(self, bot: Bot) -> None:
+        if not (message_id := self.cb_message_info and self.cb_message_info.reply_action_message_id):
+            logger.info("[%s] There is no reply message to delete", self.id)
+            return
+
+        try:
+            await bot.delete_message(self.chat.id, message_id)
+        except TelegramBadRequest as telegram_bad_request:
+            logger.warning("No need to delete reply message: %s", telegram_bad_request)
