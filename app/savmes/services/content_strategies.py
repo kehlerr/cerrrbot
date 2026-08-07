@@ -36,8 +36,9 @@ class ContentStrategyBase:
             actions_menu: dict[MessageAction, ActionsData] = {}
         else:
             actions_menu = {action: {} for action in cls.POSSIBLE_ACTIONS}
-            if parsed_actions := cls._parse_custom_actions(msgdoc):
-                actions_menu.update(parsed_actions)
+
+        if parsed_actions := cls._parse_custom_actions(msgdoc):
+            actions_menu.update(parsed_actions)
 
         return PreparedMessageInfo(
             action=cls.DEFAULT_ACTION,
@@ -88,10 +89,10 @@ class _DownloadableContentStrategy(ContentStrategy):
         if app_settings.max_load_file_size < 0 or fsize < app_settings.max_load_file_size:
             message_info.action = MessageActions.DOWNLOAD
             if message_actions and msgdoc.media_group_id:
-                message_actions.pop(MessageActions.DOWNLOAD)
+                message_actions.pop(MessageActions.DOWNLOAD, None)
                 message_actions[MessageActions.DOWNLOAD_ALL] = {}
         else:
-            message_actions.pop(MessageActions.DOWNLOAD)
+            message_actions.pop(MessageActions.DOWNLOAD, None)
         return message_info
 
 

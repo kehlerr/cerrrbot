@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from typing import Any
+from typing import Any, cast
 
 from aiogram import Bot
 from celery import signature, states
@@ -54,8 +54,9 @@ class CustomActionExecutor(_TaskActionExecutor):
             task_info["task_name"], args=(task_args,), kwargs={"msgdoc_id": msgdoc.id, "code": action.code}
         )
         if task_info.get("is_instant", False):
-            result = (await task_signature()).result()
-            await self._update_msgdoc_info(msgdoc, actions_to_del=(action,), new_repo=repo)
+            result = cast(ActionResult, await task_signature())
+            if result.success:
+                await self._update_msgdoc_info(msgdoc, actions_to_del=(action,), new_repo=repo)
             return result
 
         try:
