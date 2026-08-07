@@ -1,11 +1,9 @@
-import hashlib
 from datetime import datetime
 from typing import Annotated, Any, Self, Sequence, cast
 
 import logging
 
 from aiogram import Bot
-from aiogram.enums import MessageOriginType
 from aiogram.exceptions import TelegramBadRequest
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 

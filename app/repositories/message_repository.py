@@ -20,3 +20,9 @@ class MessageRepository(MongoRepository):
 
     async def delete_msgdoc(self, msgdoc: MessageDocument) -> int:
         return await self.delete({"_id": ObjectId(msgdoc.id)})
+
+    async def delete_msgdocs(self, msgdocs: list[MessageDocument]) -> int | None:
+        if not msgdocs:
+            return None
+        query = {"_id": {"$in": [ObjectId(msgdoc.id) for msgdoc in msgdocs]}}
+        return await self.delete(query, multi=True)
