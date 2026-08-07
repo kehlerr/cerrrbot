@@ -113,3 +113,5 @@ class SavmesService:
         logger.debug("Found {} deprecated messages".format(len(msgdocs)))
         for msgdoc in msgdocs:
             await msgdoc.delete_reply_message(bot)
+
+        await self._new_messages_repo.delete_msgdocs(msgdocs)
