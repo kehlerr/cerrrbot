@@ -21,12 +21,12 @@ services:
     volumes:
       - "${CERRRBOT_MONGO_CONTAINER_VOLUME_DATA_DIR_PATH}:/data/db/"
     healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongo localhost:${CERRRBOT_MONGO_PORT}/test --quiet
+      test: echo 'db.runCommand("ping").ok' | mongo localhost:${CERRRBOT_MONGO_DB_PORT}/test --quiet
       interval: 5s
       timeout: 5s
       retries: 5
       start_period: 5s
-    command: mongod --port "${CERRRBOT_MONGO_PORT}"
+    command: mongod --port "${CERRRBOT_MONGO_DB_PORT}"
     logging:
       driver: "json-file"
       options:
@@ -35,7 +35,7 @@ services:
     networks:
       cerrrbot-network:
         aliases:
-          - "${CERRRBOT_MONGO_HOST}"
+          - "${CERRRBOT_MONGO_DB_HOST}"
   telegram-bot-api:
     image: aiogram/telegram-bot-api:latest
     container_name: "${CERRRBOT_TG_API_SERVER_CONTAINER_NAME}"
