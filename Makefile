@@ -28,7 +28,7 @@ clean: dc_rm_all
 	@rm -rf .dev_meta
 
 run:
-	python -m app
+	uv run -m app
 
 pretty:
 	isort . && black . && flake8 .

@@ -1,5 +1,5 @@
 # Base Image for builder
-FROM python:3.14.6-slim as builder
+FROM python:3.14.7-slim as builder
 
 # Default env vars for python and uv
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -40,9 +40,9 @@ COPY --chown=$USER:$USER app/ ./app/
 COPY --chown=$USER:$USER .env .
 
 # Sync dependencies using uv (creates .venv automatically)
-RUN uv sync --frozen --no-dev
+RUN uv sync --frozen --no-dev --all-packages
 
 # Add the virtual environment to PATH so python/celery commands work globally
 ENV PATH="$APP_HOME/.venv/bin:$PATH"
 
-CMD ["python", "-m", "app"]
+CMD ["uv", "run", "-m", "app"]
