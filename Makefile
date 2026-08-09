@@ -30,8 +30,14 @@ clean: dc_rm_all
 run:
 	uv run -m app
 
+celery:
+	uv run celery -A app.celery_app worker --loglevel=DEBUG
+
 pretty:
 	isort . && black . && flake8 .
+
+sync:
+	uv sync --all-packages
 
 # Docker
 dc_build:
