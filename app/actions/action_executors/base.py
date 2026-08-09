@@ -1,4 +1,4 @@
-import logging
+from loguru import logger
 from typing import Any
 
 from aiogram import Bot
@@ -8,9 +8,6 @@ from app.exceptions import AppError
 from app.models import ActionResult, MessageDocument
 from app.repositories.message_repository import MessageRepository
 from app.types import ExecutorCode
-
-
-logger = logging.getLogger("cerrrbot")
 
 
 class ActionExecutor:

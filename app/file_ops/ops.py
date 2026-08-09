@@ -1,14 +1,9 @@
 import os
-from logging import getLogger
-
 from aiogram import Bot
 
 from app import app_settings
 
 from .exceptions import DownloadFileError
-
-
-logger = getLogger("cerrrbot")
 
 
 def create_directory(directory_name: str) -> str:

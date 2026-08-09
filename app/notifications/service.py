@@ -1,4 +1,4 @@
-import logging
+from loguru import logger
 from datetime import datetime, UTC
 from uuid import uuid4
 
@@ -10,8 +10,6 @@ from app.exceptions import AppError
 from .exceptions import PushNotificationError, SendNotificationMessageError
 from .notification import Notification
 from .repository import NotificationRepository
-
-logger = logging.getLogger("cerrrbot")
 
 
 class NotificationService:

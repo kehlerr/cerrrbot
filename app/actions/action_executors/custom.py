@@ -1,5 +1,5 @@
 import asyncio
-import logging
+from loguru import logger
 from typing import Any, cast
 
 from aiogram import Bot
@@ -14,9 +14,6 @@ from app.repositories.message_repository import MessageRepository
 from app.types import ExecutorCode
 
 from .base import ActionExecutor
-
-
-logger = logging.getLogger("cerrrbot")
 
 
 class _TaskActionExecutor(ActionExecutor):

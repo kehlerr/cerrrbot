@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Annotated, Any, Self, Sequence, cast
 
-import logging
+from loguru import logger
 
 from aiogram import Bot
 from aiogram.exceptions import TelegramBadRequest
@@ -27,9 +27,6 @@ from .message_text_info import (
     MessageEntity,
     MessageTextInfo,
 )
-
-
-logger = logging.getLogger("cerrrbot")
 
 
 PyObjectId = Annotated[str, BeforeValidator(str)]

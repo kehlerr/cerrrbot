@@ -1,6 +1,6 @@
 
 import asyncio
-import logging
+from loguru import logger
 import shutil
 
 from pathlib import Path
@@ -17,8 +17,6 @@ from aiohttp.web import Application as AiohttpApp
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 
 from .settings import cerrrbot_settings, BotModeType, WebhookServerSettings
-
-logger = logging.getLogger("cerrrbot")
 
 
 class CerrrBot(AiogramBot):
@@ -44,7 +42,7 @@ class CerrrBot(AiogramBot):
             session = None
             webhook_server_settings = None
 
-        logger.info("Initializing CerrrBot in '%s' mode...", cerrrbot_settings.mode)
+        logger.info(f"Initializing CerrrBot in '{cerrrbot_settings.mode}' mode...")
         return cls(token=cerrrbot_settings.token, session=session, webhook_server_settings=webhook_server_settings)
 
     async def download_file(

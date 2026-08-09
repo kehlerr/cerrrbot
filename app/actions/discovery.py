@@ -1,11 +1,9 @@
 import inspect
-from logging import getLogger
+from loguru import logger
 from importlib import import_module
 from pkgutil import walk_packages
 
 from .action_executors import ActionExecutor
-
-logger = getLogger(__name__)
 
 
 def discover_actions(package_name: str) -> list[type[ActionExecutor]]:

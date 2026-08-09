@@ -1,12 +1,9 @@
-import logging
 from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
 
 from app.actions import MessageActions
 from app.models import MessageAction
-
-logger = logging.getLogger("cerrrbot")
 
 
 ActionsData = dict[str, Any]

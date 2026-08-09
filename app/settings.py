@@ -6,6 +6,7 @@ from typing import Any, Self
 from pydantic import Field, field_validator, model_validator
 
 from app.exceptions import InvalidSettingError
+from app.logging import LoggingScope
 from app.types import CerrrBotSettings
 
 
@@ -19,6 +20,7 @@ class AppSettings(CerrrBotSettings):
     # Base app settings
     debug: bool = Field(default=False)
     logging_level: str = Field(default="DEBUG" if debug else "INFO")
+    logging_scope: LoggingScope = Field(default=LoggingScope.ALL)
 
     max_load_file_size: int = Field(default=20_000_000)
     message_ttl: int = Field(default=48 * 60 * 60 - 60 * 60)  # bot cannot operate with message that sent more than 48h ago

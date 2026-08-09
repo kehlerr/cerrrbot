@@ -16,6 +16,7 @@ dependencies = [
     "pydantic-settings>=2.14.2",
     "pymongo>=4.17.0",
     "redis>=8.0.1",
+    "loguru>=0.7.2",
 ]
 
 [tool.uv.workspace]

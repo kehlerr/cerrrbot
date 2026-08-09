@@ -1,4 +1,4 @@
-import logging
+from loguru import logger
 from typing import cast
 
 from dishka.integrations.aiogram import FromDishka, inject
@@ -14,8 +14,6 @@ from app.savmes import SavmesService
 from app.types import ActionCallbackData
 
 from .menu_presenter import MenuPresenter
-
-logger = logging.getLogger("cerrrbot")
 
 
 handlers_router = Router()

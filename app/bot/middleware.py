@@ -1,12 +1,10 @@
-from logging import getLogger
+from loguru import logger
 from typing import Any, Awaitable, Callable
 
 from aiogram import BaseMiddleware
 from aiogram.types import Message
 
 from app import app_settings
-
-logger = getLogger("cerrrbot")
 
 
 class CheckUserMiddleware(BaseMiddleware):
