@@ -1,4 +1,4 @@
-from logging import getLogger
+from loguru import logger
 from typing import Any
 
 from aiogram import Bot
@@ -8,8 +8,6 @@ from app.types import ExecutorCode
 
 from ..exceptions import ActionExecutionError, ActionNotFoundError, DuplicateActionExecutorError
 from .base import ActionExecutor
-
-logger = getLogger("cerrrbot")
 
 
 class ActionExecutorRegistry:

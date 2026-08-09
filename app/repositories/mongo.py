@@ -1,4 +1,4 @@
-import logging
+from loguru import logger
 from typing import Any, cast
 
 from pydantic import BaseModel
@@ -10,8 +10,6 @@ from app.types import TPydanticModel, PydanticModelClass
 
 from .exceptions import InsertEntryError, UpdateEntryError
 
-
-logger = logging.getLogger("cerrrbot")
 
 
 class MongoRepository[TPydanticModel]:

@@ -1,4 +1,4 @@
-from logging import getLogger
+from loguru import logger
 from typing import Any
 
 from pymongo import AsyncMongoClient
@@ -6,8 +6,6 @@ from pymongo.asynchronous.database import AsyncDatabase
 from pymongo.errors import ServerSelectionTimeoutError
 
 from .settings import infrastructure_settings
-
-logger = getLogger("cerrrbot")
 
 
 async def check_connection() -> dict[str, Any] | None:

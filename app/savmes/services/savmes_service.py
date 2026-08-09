@@ -1,4 +1,4 @@
-import logging
+from loguru import logger
 from datetime import datetime, timedelta, UTC
 
 from aiogram import Bot
@@ -19,9 +19,6 @@ from .content_strategies import (
     CustomizableContentStrategy,
     cls_strategy_by_content_type,
 )
-
-
-logger = logging.getLogger("cerrrbot")
 
 
 class SavmesService:

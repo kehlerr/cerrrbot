@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from logging import getLogger
+from loguru import logger
 from typing import Any
 
 from aiogram import Bot
@@ -14,8 +14,6 @@ from app.repositories.message_repository import MessageRepository
 from app.types import ContentType, ExecutorCode
 
 from .base import ActionExecutor
-
-logger = getLogger(__name__)
 
 
 class KeepActionExecutor(ActionExecutor):

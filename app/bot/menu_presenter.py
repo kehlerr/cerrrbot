@@ -1,4 +1,4 @@
-import logging
+from loguru import logger
 
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
@@ -9,9 +9,6 @@ from app.actions import MessageActions
 from app.exceptions import InvalidMessageDocumentError
 from app.models import MessageDocument, SVM_ReplyInfo, ActionResult, MessageAction
 from app.types import ActionCallbackData
-
-
-logger = logging.getLogger(__name__)
 
 
 class MenuPresenter:

@@ -1,4 +1,3 @@
-import logging
 from typing import Mapping
 
 from app import app_settings
@@ -8,9 +7,6 @@ from app.models import ActionsData, MessageAction, MessageDocument, PreparedMess
 from app.types import ContentType
 
 from .message_parser import MessageParser
-
-
-logger = logging.getLogger("cerrrbot")
 
 
 class ContentStrategyBase:

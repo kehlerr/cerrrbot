@@ -1,4 +1,4 @@
-import logging
+from loguru import logger
 import hashlib
 from datetime import datetime
 from pathlib import Path
@@ -13,8 +13,6 @@ from app.types import ContentType
 
 from .exceptions import InvalidStickerSetError
 from .ops import save_file
-
-logger = logging.getLogger("cerrrbot")
 
 
 class FileDownloader:
