@@ -1,6 +1,8 @@
 from app import app_settings
+from app.logging import ActionLogInfo
 from app.models import MessageAction
 from app.types import ExecutorCode
+
 
 from .exceptions import DuplicateActionLoadedError
 
@@ -86,6 +88,14 @@ class _MESSAGE_ACTIONS:
 
             self.BY_CODE[action.code] = action
             self.CUSTOM_ACTION_BY_CODE[action.code] = action
+
+    def get_actions_log_info(self) -> list[ActionLogInfo]:
+        info = []
+        for action in self._DEFAULT_ACTIONS:
+            info.append(ActionLogInfo(source_name="Core", action_code=action.code))
+        for action in self._DEFAULT_CUSTOM_ACTIONS:
+            info.append(ActionLogInfo(source_name="Core (Custom)", action_code=action.code))
+        return info
 
 
 MessageActions = _MESSAGE_ACTIONS()

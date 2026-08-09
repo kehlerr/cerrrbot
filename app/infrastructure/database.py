@@ -8,15 +8,26 @@ from pymongo.errors import ServerSelectionTimeoutError
 from .settings import infrastructure_settings
 
 
-async def check_connection() -> dict[str, Any] | None:
+async def check_connection() -> bool:
+    logger.info("Checking database connection...")
+
     client = _get_client()
 
     try:
-        return await client.server_info()
+        server_info = await client.server_info()
     except ServerSelectionTimeoutError:
-        return None
+        server_info = None
     finally:
         await client.close()
+
+    if not server_info:
+        logger.error("Failed to reach database.")
+        return False
+
+    logger.info("Database is reachable and online.")
+    logger.debug(f"Database server info: {server_info}")
+
+    return True
 
 
 def get_mongo_db() -> AsyncDatabase:

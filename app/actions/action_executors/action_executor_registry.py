@@ -1,6 +1,8 @@
 from loguru import logger
 from typing import Any
 
+from app.logging import ActionLogInfo, TableLogger
+
 from aiogram import Bot
 
 from app.models import ActionResult, MessageAction, MessageDocument
@@ -19,7 +21,11 @@ class ActionExecutorRegistry:
                 self.register(action)
 
         if self._actions:
-            logger.info(f"Actions registry initialized with actions: {self._actions}")
+            action_logs = [
+                ActionLogInfo(source_name=action.executor_name, action_code=code)
+                for code, action in self._actions.items()
+            ]
+            TableLogger.print_actions_info("Actions Executors Registry", action_logs)
 
     def register(self, action: ActionExecutor, force_override: bool = False) -> None:
         """

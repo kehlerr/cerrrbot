@@ -74,6 +74,12 @@ class ExecutorCode(StrEnum):
     CUSTOM = "custom"
 
 
+class PluginStatus(StrEnum):
+    LOADED = "Loaded"
+    DISABLED = "Disabled"
+    FAILED_LOAD = "Failed"
+    NO_PLUGIN_FOUND = "No Plugin Found"
+
 
 @runtime_checkable
 class PydanticModelClass[TPydanticModel](Protocol):

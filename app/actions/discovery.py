@@ -38,6 +38,6 @@ def discover_actions(package_name: str) -> list[type[ActionExecutor]]:
             if has_action_executor_code and has_execute:
                 actions.append(obj)
 
-    print(f"Discovered {len(actions)} action executors")
+    logger.debug(f"Discovered {len(actions)} action executors")
 
     return actions
