@@ -9,24 +9,31 @@ from dishka.integrations.aiogram import setup_dishka
 from app.bot import handlers_router, make_scheduler, create_periodic_tasks, CheckUserMiddleware
 from app.bot.cerrrbot import CerrrBot
 from app.bot.commands import load_commands
+
 from app.celery_app import app as _  # noqa: F401
+
+from app.actions import MessageActions
+from app.logging import TableLogger
 from app.infrastructure.database import check_connection
 from app.ioc import get_app_container
 from app.plugins_manager import plugins_manager
+
 
 async def main():
 
     logger.info("Starting bot...")
 
-    logger.info("Checking database connection...")
-    if await check_connection() is None:
-        logger.error("Failed to reach database. Exiting.")
+    if not await check_connection():
         return
-    logger.info("Database is reachable and online.")
 
     cerrrbot = CerrrBot.create()
 
     plugins_manager.load()
+
+    TableLogger.print_actions_info(
+        "Loaded Actions",
+        MessageActions.get_actions_log_info() + plugins_manager.get_actions_info()
+    )
 
     main_router = Router()
     main_router.message.middleware(CheckUserMiddleware())

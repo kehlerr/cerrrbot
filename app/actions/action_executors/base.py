@@ -14,6 +14,10 @@ class ActionExecutor:
 
     code: ExecutorCode
 
+    @property
+    def executor_name(self) -> str:
+        return self.__class__.__name__
+
     async def get_related_msgdocs(self, msgdoc: MessageDocument, *, new_repo: MessageRepository) -> list[MessageDocument]:
         if not (media_group_id := msgdoc.media_group_id):
             return []
