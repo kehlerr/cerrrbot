@@ -3,6 +3,7 @@ from loguru import logger
 from typing import Any, Iterator
 
 from aiogram import Router
+from dishka import AsyncContainer, Provider
 
 from app.models import MessageAction, CustomMessageAction
 from app.logging import TableLogger, PluginStatusInfo, ActionLogInfo
@@ -112,9 +113,19 @@ class PluginsManager:
     def get_commands_routers(self) -> Iterator[Router]:
         return (v.commands_router for v in self.plugins if v.commands_router is not None)
 
+    def get_ioc_providers(self) -> Iterator[Provider]:
+        for plugin in self.plugins:
+            for provider in plugin.providers:
+                yield provider
+
     def load_tasks(self, app) -> None:
         for plugin in self.plugins:
             for task in plugin.tasks:
                 app.register_task(task)
+
+    async def on_startup(self, container: AsyncContainer) -> None:
+        for plugin in self.plugins:
+            if on_startup_hook := plugin.on_startup_hook:
+                await on_startup_hook(container)
 
 plugins_manager = PluginsManager()

@@ -81,11 +81,17 @@ def get_app_container(bot: Bot | None = None) -> AsyncContainer:
         from app.bot.cerrrbot import CerrrBot
         from app.actions.discovery import discover_actions
         from app.actions.ioc import ActionsProvider
+        from app.plugins_manager import plugins_manager
 
         bot_instance = bot or CerrrBot.create()
-        _container = make_async_container(
+        providers = [
             AppProvider(),
             ActionsProvider(discover_actions("app.actions.action_executors")),
+            *plugins_manager.get_ioc_providers()
+        ]
+        
+        _container = make_async_container(
+            *providers,
             context={Bot: bot_instance}
         )
     return _container
