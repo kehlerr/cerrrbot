@@ -1,6 +1,5 @@
 from loguru import logger
 from datetime import datetime, UTC
-from uuid import uuid4
 
 from aiogram import Bot
 from aiogram.exceptions import TelegramBadRequest
@@ -24,12 +23,15 @@ class NotificationService:
         logger.debug(f"Got notification: {key}")
 
         if notification.need_send():
+            logger.debug(f"Sending notification now: {key}")
             await self.send_notification_message(bot, notification)
+
+            await self._repo.delete(key)
 
             if notification.need_repeat():
                 await self.repeat_push(notification)
-
-            await self._repo.delete(key)
+        else:
+            logger.debug(f"No need to send notification now: {key}")
 
     async def send_notification_message(self, bot: Bot, notification: Notification) -> None:
         try:
@@ -56,7 +58,9 @@ class NotificationService:
         await self.push_message_notification(new_notificaton)
 
     async def push_message_notification(self, notification: Notification) -> None:
-        key = str(uuid4())
+
+        key = notification.key
+
         try:
             await self._repo.insert(key, notification)
         except AppError as exc:
