@@ -45,6 +45,8 @@ async def main():
 
     container = get_app_container(cerrrbot)
 
+    await plugins_manager.on_startup(container)
+
     scheduler = make_scheduler()
     await create_periodic_tasks(scheduler, cerrrbot, container)
     scheduler.start()
