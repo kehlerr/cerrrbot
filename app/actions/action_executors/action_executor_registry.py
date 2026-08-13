@@ -1,10 +1,9 @@
-from loguru import logger
 from typing import Any
 
-from app.logging import ActionLogInfo, TableLogger
-
 from aiogram import Bot
+from loguru import logger
 
+from app.logging import ActionLogInfo, TableLogger
 from app.models import ActionResult, MessageAction, MessageDocument
 from app.types import ExecutorCode
 
@@ -22,8 +21,7 @@ class ActionExecutorRegistry:
 
         if self._actions:
             action_logs = [
-                ActionLogInfo(source_name=action.executor_name, action_code=code)
-                for code, action in self._actions.items()
+                ActionLogInfo(source_name=action.executor_name, action_code=code) for code, action in self._actions.items()
             ]
             TableLogger.print_actions_info("Actions Executors Registry", action_logs)
 
@@ -33,8 +31,7 @@ class ActionExecutorRegistry:
         """
         if (code := action.code) in self._actions and not force_override:
             raise DuplicateActionExecutorError(
-                f"Action '{code}' is already registered. "
-                "If a plugin needs to override a core action, use force_override=True."
+                f"Action '{code}' is already registered. If a plugin needs to override a core action, use force_override=True."
             )
 
         self._actions[code] = action
@@ -51,8 +48,10 @@ class ActionExecutorRegistry:
 
         try:
             handler = self._actions[action_code]
-        except KeyError:
-            raise ActionNotFoundError(f"Action '{action_code}' is missing in registry. Did you forget to load the plugin?")
+        except KeyError as e:
+            raise ActionNotFoundError(
+                f"Action '{action_code}' is missing in registry. Did you forget to load the plugin?"
+            ) from e
 
         try:
             return await handler.execute(msgdoc, bot, **kwargs)

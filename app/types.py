@@ -1,17 +1,14 @@
 from enum import StrEnum
-from typing import Any, TypeVar, Protocol, runtime_checkable
-
-from aiogram.filters.callback_data import CallbackData
+from typing import Any, Protocol, TypeVar, runtime_checkable
 
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings, SettingsConfigDict
-
 
 TPydanticModel = TypeVar("TPydanticModel", bound=BaseModel)
 MessageActionCode = str
 
 
-class CerrrBotSettings(BaseSettings):
+class AppBaseSettings(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix="CERRRBOT_",
         env_file=".env",
@@ -43,7 +40,7 @@ class ContentType(StrEnum):
     RICH_MESSAGE_TEXT = "rich_message_text"
 
     @classmethod
-    def from_val(cls, val: Any) -> "ContentType":
+    def from_val(cls, val: Any) -> ContentType:
         if isinstance(val, cls):
             return val
         s_val = str(val.value if hasattr(val, "value") else val)
@@ -51,12 +48,6 @@ class ContentType(StrEnum):
             return cls(s_val)
         except ValueError:
             return cls.UNKNOWN
-
-
-class BotMode(StrEnum):
-    AUTO = "auto"
-    WEBHOOK = "webhook"
-    POLLING = "polling"
 
 
 class ExecutorCode(StrEnum):
@@ -89,21 +80,9 @@ class PydanticModelClass[TPydanticModel](Protocol):
         *,
         strict: bool | None = None,
         from_attributes: bool | None = None,
-        context: dict[str, Any] | None = None
-    ) -> TPydanticModel:
-        ...
+        context: dict[str, Any] | None = None,
+    ) -> TPydanticModel: ...
 
     def model_dump(
-        self,
-        *,
-        by_alias: bool = True,
-        exclude_unset: bool = False,
-        exclude_defaults: bool = False,
-        exclude_none: bool = False
-    ) -> dict[str, Any]:
-        ...
-
-
-class ActionCallbackData(CallbackData, prefix="SVM"):
-    action: str
-    msgdoc_id: str
+        self, *, by_alias: bool = True, exclude_unset: bool = False, exclude_defaults: bool = False, exclude_none: bool = False
+    ) -> dict[str, Any]: ...

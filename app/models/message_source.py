@@ -1,12 +1,10 @@
-
+import hashlib
 from dataclasses import dataclass
 from datetime import datetime
-import hashlib
 from typing import Any, Self
 
 from aiogram.enums import MessageOriginType
 from pydantic import BaseModel, ConfigDict, Field
-
 
 
 class UserInfo(BaseModel):
@@ -35,6 +33,20 @@ class ChatInfo(BaseModel):
     model_config = ConfigDict(extra="allow", populate_by_name=True)
 
 
+@dataclass(frozen=True)
+class MessageSourceData:
+    chat_id: int
+    user_id: int | None = None
+    title: str | None = None
+    tag: str | None = None
+
+    @property
+    def source_id(self) -> str:
+        if self.user_id:
+            return f"{self.chat_id}_{self.user_id}"
+        return str(self.chat_id)
+
+
 class MessageForwardOrigin(BaseModel):
     type: MessageOriginType
     date: datetime
@@ -58,7 +70,7 @@ class MessageForwardOrigin(BaseModel):
         elif origin_type == MessageOriginType.CHAT and (chat := self.sender_chat):
             return MessageSourceData(chat_id=chat.id, title=chat.title or "unknown", tag=chat.username)
         elif origin_type in (MessageOriginType.CHANNEL, "channel") and (chat := self.chat):
-                return MessageSourceData(chat_id=chat.id, title=chat.title or "unknown", tag=chat.username)
+            return MessageSourceData(chat_id=chat.id, title=chat.title or "unknown", tag=chat.username)
 
         return None
 
@@ -77,17 +89,3 @@ class MessageSourceInfo(BaseModel):
     def from_message(cls, message: Any) -> Self:
         raw_dump = message.model_dump(by_alias=True, exclude_unset=True, exclude_none=True)
         return cls.model_validate(raw_dump)
-
-
-@dataclass(frozen=True)
-class MessageSourceData:
-    chat_id: int
-    user_id: int | None = None
-    title: str | None = None
-    tag: str | None = None
-
-    @property
-    def source_id(self) -> str:
-        if self.user_id:
-            return f"{self.chat_id}_{self.user_id}"
-        return str(self.chat_id)

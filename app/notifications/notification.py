@@ -1,11 +1,11 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from typing import Any
 from uuid import uuid4
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, model_validator
 
 from app import app_settings
 
-from typing import Any
 
 class Notification(BaseModel):
     key: str = ""
@@ -30,5 +30,5 @@ class Notification(BaseModel):
         return self.repeat_in > 0 and self.send_count > 1
 
     def need_send(self) -> bool:
-        now_tstamp = int(datetime.now(timezone.utc).timestamp())
+        now_tstamp = int(datetime.now(UTC).timestamp())
         return self.send_count != 0 and now_tstamp >= self.send_at

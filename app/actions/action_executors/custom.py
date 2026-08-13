@@ -1,34 +1,32 @@
 import asyncio
-from loguru import logger
 from typing import Any, cast
 
 from aiogram import Bot
 from celery import signature, states
 from celery.contrib.abortable import AbortableAsyncResult as CeleryTaskResult
+from loguru import logger
 
 from app.actions import MessageActions
 from app.actions.exceptions import MissingActionDataError
-from app.models import ActionResult, MessageDocument, MessageAction
+from app.models import ActionResult, MessageAction, MessageDocument
 from app.repositories.message_repository import MessageRepository
-
 from app.types import ExecutorCode
 
 from .base import ActionExecutor
 
 
 class _TaskActionExecutor(ActionExecutor):
-
     @classmethod
     def _get_task_status(cls, task_id: str) -> str:
         return CeleryTaskResult(task_id).status
 
 
-
 class CustomActionExecutor(_TaskActionExecutor):
-
     code = ExecutorCode.CUSTOM
 
-    async def _execute_impl(self, msgdoc: MessageDocument, *_: Any, new_repo: MessageRepository, **task_info: Any) -> ActionResult:
+    async def _execute_impl(
+        self, msgdoc: MessageDocument, bot: Bot, *, new_repo: MessageRepository, **task_info: Any
+    ) -> ActionResult:
         action_code: str = task_info["code"]
         action = MessageActions.BY_CODE[action_code]
         action_data: dict[str, Any] = msgdoc.get_current_menu().get(action_code, {})
@@ -57,8 +55,7 @@ class CustomActionExecutor(_TaskActionExecutor):
             return result
 
         try:
-            result = task_signature.delay()
-            task_id = str(result)
+            task_id = str(task_signature.delay())
             task_status = self._get_task_status(task_id)
         except Exception as exc:
             logger.exception(exc)
@@ -96,19 +93,21 @@ class CustomActionExecutor(_TaskActionExecutor):
 
 
 class TaskGetStatusActionExecutor(_TaskActionExecutor):
-
     code = ExecutorCode.TASK_GET_STATUS
 
-    async def _execute_impl(self, msgdoc: MessageDocument, *_: Any, new_repo: MessageRepository, **task_info: Any) -> ActionResult:
+    async def _execute_impl(
+        self, msgdoc: MessageDocument, *_: Any, new_repo: MessageRepository, **task_info: Any
+    ) -> ActionResult:
         status = self._get_task_status(task_info["task_id"])
         return ActionResult(popup_text=status)
 
 
 class TaskAbortActionExecutor(_TaskActionExecutor):
-
     code = ExecutorCode.TASK_ABORT
 
-    async def _execute_impl(self, msgdoc: MessageDocument, bot: Bot, *, new_repo: MessageRepository, **task_info: Any) -> ActionResult:
+    async def _execute_impl(
+        self, msgdoc: MessageDocument, bot: Bot, *, new_repo: MessageRepository, **task_info: Any
+    ) -> ActionResult:
         await asyncio.to_thread(CeleryTaskResult(task_info["task_id"]).abort)
         await self._update_msgdoc_info(msgdoc, actions_to_del=(MessageActions.TASK_ABORT,), new_repo=new_repo)
         return ActionResult(actions_updated=True)

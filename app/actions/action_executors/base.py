@@ -1,8 +1,8 @@
-from loguru import logger
 from typing import Any
 
 from aiogram import Bot
 from aiogram.exceptions import TelegramBadRequest
+from loguru import logger
 
 from app.exceptions import AppError
 from app.models import ActionResult, MessageDocument
@@ -11,7 +11,6 @@ from app.types import ExecutorCode
 
 
 class ActionExecutor:
-
     code: ExecutorCode
 
     @property
@@ -32,7 +31,9 @@ class ActionExecutor:
 
     async def delete_reply_message(self, msgdoc: MessageDocument, bot: Bot, *, new_repo: MessageRepository) -> None:
         await msgdoc.delete_reply_message(bot)
-        await self._update_msgdoc_info(msgdoc, new_action=None, new_actions_menu={}, reply_action_message_id=0, new_repo=new_repo)
+        await self._update_msgdoc_info(
+            msgdoc, new_action=None, new_actions_menu={}, reply_action_message_id=0, new_repo=new_repo
+        )
 
     async def execute(self, msgdoc: MessageDocument, bot: Bot, **executor_args: Any) -> ActionResult:
         logger.info(f"Executing action: {self.code} on msgdoc: {msgdoc.id}")
@@ -47,7 +48,15 @@ class ActionExecutor:
 
         return result
 
-    async def _execute_impl(self, msgdoc: MessageDocument, bot: Bot, **executor_args: Any) -> ActionResult:
+    async def _execute_impl(
+        self,
+        msgdoc: MessageDocument,
+        bot: Bot,
+        *,
+        new_repo: MessageRepository,
+        saved_repo: MessageRepository,
+        **executor_args: Any,
+    ) -> ActionResult:
         raise NotImplementedError
 
     async def _update_msgdoc_info(self, msgdoc: MessageDocument, *, new_repo: MessageRepository, **kwargs: Any) -> None:

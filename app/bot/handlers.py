@@ -1,20 +1,18 @@
-from loguru import logger
 from typing import cast
-
-from dishka.integrations.aiogram import FromDishka, inject
 
 from aiogram import Bot, F, Router
 from aiogram.types import CallbackQuery, Message
+from dishka.integrations.aiogram import FromDishka, inject
+from loguru import logger
 
 from app.actions import MessageActions
 from app.exceptions import AppError
 from app.models import ActionResult, MessageDocument
 from app.notifications import NotificationService
 from app.savmes import SavmesService
-from app.types import ActionCallbackData
 
 from .menu_presenter import MenuPresenter
-
+from .types import ActionCallbackData
 
 handlers_router = Router()
 
@@ -49,11 +47,11 @@ async def on_received_message(message: Message, bot: Bot, savmes_service: FromDi
 async def on_action_pressed(
     query: CallbackQuery, callback_data: ActionCallbackData, bot: Bot, savmes_service: FromDishka[SavmesService]
 ) -> None:
-    logger.info("Received data on chosen action: {}".format(callback_data))
+    logger.info(f"Received data on chosen action: {callback_data}")
 
     msgdoc_id = callback_data.msgdoc_id
     if not (msgdoc := await savmes_service.get_msgdoc_by_id(msgdoc_id)):
-        logger.warning("Message for action not found: {}".format(msgdoc_id))
+        logger.warning(f"Message for action not found: {msgdoc_id}")
         return
 
     result = await savmes_service.execute_message_action(msgdoc, bot, callback_data.action)
@@ -95,9 +93,7 @@ async def _process_action_result(
         return
 
     await bot.edit_message_reply_markup(
-        chat_id=msgdoc.chat.id,
-        message_id=reply_info.reply_action_message_id,
-        reply_markup=next_markup
+        chat_id=msgdoc.chat.id, message_id=reply_info.reply_action_message_id, reply_markup=next_markup
     )
 
 

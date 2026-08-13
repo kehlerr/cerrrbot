@@ -1,4 +1,5 @@
-from typing import Any, AsyncIterator
+from collections.abc import AsyncIterator
+from typing import Any
 
 import orjson as json
 from redis.asyncio import Redis
@@ -26,7 +27,9 @@ class RedisRepository:
             result[key] = entry
         return result
 
-    async def iter_all_raw(self, key_pattern: str | None = None, batch_size: int | None = None) -> AsyncIterator[tuple[str, bytes | None]]:
+    async def iter_all_raw(
+        self, key_pattern: str | None = None, batch_size: int | None = None
+    ) -> AsyncIterator[tuple[str, bytes | None]]:
         key_pattern = key_pattern or self.KEY_ALL
         batch_keys: list[str] = []
 
@@ -48,8 +51,8 @@ class RedisRepository:
             for key, value in zip(batch_keys, values, strict=True):
                 yield key, value
 
-    async def select(self, key: str) -> bytes:
-        if (result :=  await self._client.get(self._cls_key(key))) is None:
+    async def select(self, key: str) -> Any:
+        if (result := await self._client.get(self._cls_key(key))) is None:
             raise EntryNotFoundError(key=key)
         return result
 

@@ -5,7 +5,7 @@ from httpx import URL
 from pydantic import BaseModel, Field
 
 from app import app_settings
-from app.types import MessageActionCode, ExecutorCode
+from app.types import ExecutorCode, MessageActionCode
 
 
 class MessageAction(BaseModel):
@@ -16,7 +16,7 @@ class MessageAction(BaseModel):
     executor_args: dict[str, Any] = Field(default_factory=dict)
 
     def __hash__(self):
-        return self.order
+        return hash(self.order)
 
     def __gt__(self, other):
         return self.order > other.order
@@ -25,12 +25,15 @@ class MessageAction(BaseModel):
         return []
 
 
+DEFAULT_NONE_ACTION = MessageAction(code="NONE", caption="0", order=0, executor_code=ExecutorCode.NONE)
+
+
 class CustomMessageAction(MessageAction):
     order: int = Field(gt=app_settings.custom_message_min_order)
     executor_code: ExecutorCode = ExecutorCode.CUSTOM
 
-    def __init__(self, **data):
-        data["executor_args"]["code"] = data["code"]
+    def __init__(self, **data: Any) -> None:
+        data.setdefault("executor_args", {})["code"] = data["code"]
         super().__init__(**data)
 
     def parse(self, text: str, links: tuple[URL]) -> list[str]:
@@ -63,4 +66,3 @@ class CustomMessageAction(MessageAction):
             if host and host in allowed_hosts:
                 links.append(str(link))
         return links
-

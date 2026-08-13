@@ -1,12 +1,13 @@
+from collections.abc import Iterator
 from importlib import import_module
-from loguru import logger
-from typing import Any, Iterator
+from typing import Any
 
 from aiogram import Router
 from dishka import AsyncContainer, Provider
+from loguru import logger
 
-from app.models import MessageAction, CustomMessageAction
-from app.logging import TableLogger, PluginStatusInfo, ActionLogInfo
+from app.logging import ActionLogInfo, PluginStatusInfo, TableLogger
+from app.models import CustomMessageAction, MessageAction
 from app.plugins.base import Plugin
 from app.settings import PLUGINS_DIR_PATH
 from app.types import PluginStatus
@@ -45,7 +46,7 @@ class PluginsManager:
         for module in PLUGINS_DIR_PATH.iterdir():
             module_name = module.name
 
-            if not module.is_dir() or module_name.startswith(".") or module_name.startswith("_"):
+            if not module.is_dir() or module_name.startswith(".") or module_name.startswith("_") or "egg-info" in module_name:
                 continue
 
             logger.debug(f"Processing module: {module_name}")
@@ -53,7 +54,7 @@ class PluginsManager:
             full_module_name = f"{plugins_module_prefix}.{module_name}"
             try:
                 plugin_module = import_module(full_module_name)
-            except ModuleNotFoundError as exc:
+            except ModuleNotFoundError:
                 logger.debug(f"Module not found: {full_module_name}; skipping...")
                 plugin_statuses.append(PluginStatusInfo(name=module_name, status=PluginStatus.FAILED_LOAD, is_active=False))
                 continue
@@ -74,13 +75,14 @@ class PluginsManager:
 
     def _load_actions(self) -> list[ActionLogInfo]:
         from app.actions import MessageActions
+
         loaded_actions: list[MessageAction | CustomMessageAction] = []
         action_statuses: list[ActionLogInfo] = []
 
         for plugin in self.plugins:
             for action in plugin.actions:
                 loaded_actions.append(action)
-                action_code = action.code if hasattr(action, 'code') else str(action)
+                action_code = action.code if hasattr(action, "code") else str(action)
                 action_statuses.append(ActionLogInfo(source_name=plugin.name, action_code=action_code))
 
         MessageActions.load_custom_actions(loaded_actions)
@@ -115,8 +117,7 @@ class PluginsManager:
 
     def get_ioc_providers(self) -> Iterator[Provider]:
         for plugin in self.plugins:
-            for provider in plugin.providers:
-                yield provider
+            yield from plugin.providers
 
     def load_tasks(self, app) -> None:
         for plugin in self.plugins:
@@ -127,5 +128,6 @@ class PluginsManager:
         for plugin in self.plugins:
             if on_startup_hook := plugin.on_startup_hook:
                 await on_startup_hook(container)
+
 
 plugins_manager = PluginsManager()

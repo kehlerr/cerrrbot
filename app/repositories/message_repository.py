@@ -2,11 +2,11 @@ from typing import Any
 
 from bson.objectid import ObjectId
 
+from app.infrastructure.repositories import MongoRepository
 from app.models.message_document import MessageDocument
-from app.repositories.mongo import MongoRepository
 
 
-class MessageRepository(MongoRepository):
+class MessageRepository(MongoRepository[MessageDocument]):
     model_class = MessageDocument
 
     async def get_messages_by_filter(self, query: dict[str, Any]) -> list[MessageDocument]:

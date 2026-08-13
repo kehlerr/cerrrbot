@@ -1,4 +1,5 @@
 import os
+
 from aiogram import Bot
 
 from app import app_settings
@@ -27,5 +28,5 @@ async def save_file(bot: Bot, file_id: str, file_name: str, dir_name: str) -> No
     file_path = os.path.join(dir_path, file_name)
     try:
         await bot.download(file_id, file_path)
-    except Exception as exc:
-        raise DownloadFileError("Error occured while downloading file", file_id=file_id, file_path=file_path)
+    except Exception as e:
+        raise DownloadFileError("Error occured while downloading file", file_id=file_id, file_path=file_path) from e

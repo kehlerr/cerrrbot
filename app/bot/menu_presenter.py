@@ -1,14 +1,13 @@
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 from loguru import logger
 
-from aiogram.utils.keyboard import InlineKeyboardBuilder
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
-
 from app import app_settings
-
 from app.actions import MessageActions
 from app.exceptions import InvalidMessageDocumentError
-from app.models import MessageDocument, SVM_ReplyInfo, ActionResult, MessageAction
-from app.types import ActionCallbackData
+from app.models import ActionResult, MessageAction, MessageDocument, SVM_ReplyInfo
+
+from .types import ActionCallbackData
 
 
 class MenuPresenter:
@@ -24,36 +23,30 @@ class MenuPresenter:
         for action_code, action_data in msgdoc_info.get_current_menu().items():
             action = MessageActions.BY_CODE[action_code]
             if additional_caption := action_data.get("additional_caption", ""):
-                action = action.model_copy(
-                    update={"caption": f"{action.caption}{additional_caption}"}, deep=True
-                )
+                action = action.model_copy(update={"caption": f"{action.caption}{additional_caption}"}, deep=True)
             reply_actions.append(action)
 
         return SVM_ReplyInfo(
             actions=sorted(reply_actions),
             reply_action_message_id=msgdoc_info.reply_action_message_id,
             result_info_text=action_result.popup_text,
-            need_update_buttons=action_result.actions_updated
+            need_update_buttons=action_result.actions_updated,
         )
 
     @classmethod
-    def build_message_actions_menu_kb(
-        cls, reply_actions: list[MessageAction], msgdoc: MessageDocument
-    ) -> InlineKeyboardMarkup:
+    def build_message_actions_menu_kb(cls, reply_actions: list[MessageAction], msgdoc: MessageDocument) -> InlineKeyboardMarkup:
 
         if not (msgdoc_id := msgdoc.id):
             raise InvalidMessageDocumentError("Message document has no id", msgdoc=msgdoc)
 
         actions_buttons = []
         custom_actions_buttons: dict[int, list[InlineKeyboardButton]] = {}
-        logger.debug("Adding actions for: {}".format(msgdoc_id))
+        logger.debug(f"Adding actions for: {msgdoc_id}")
         for action in reply_actions:
-            logger.debug("Adding action: {}".format(action))
+            logger.debug(f"Adding action: {action}")
             button = InlineKeyboardButton(
                 text=action.caption,
-                callback_data=ActionCallbackData(
-                    action=action.code, msgdoc_id=msgdoc.id
-                ).pack(),
+                callback_data=ActionCallbackData(action=action.code, msgdoc_id=msgdoc.id).pack(),
             )
             if action.order >= app_settings.custom_message_min_order:
                 custom_actions_buttons.setdefault(action.order // 100, []).append(button)

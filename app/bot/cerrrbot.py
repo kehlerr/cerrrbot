@@ -1,29 +1,32 @@
-
 import asyncio
-from loguru import logger
 import shutil
-
 from pathlib import Path
-from typing import Any, BinaryIO, cast, Self
+from typing import Any, BinaryIO, Self, cast
 
 from aiogram import Bot as AiogramBot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram.client.session.base import BaseSession
 from aiogram.client.telegram import TelegramAPIServer
-from aiogram.webhook.aiohttp_server import SimpleRequestHandler
+from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 from aiohttp import web
 from aiohttp.web import Application as AiohttpApp
-from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
+from loguru import logger
 
-from .settings import cerrrbot_settings, BotModeType, WebhookServerSettings
+from .settings import BotModeType, WebhookServerSettings, cerrrbot_settings
 
 
 class CerrrBot(AiogramBot):
-
     _webhook_server_settings: WebhookServerSettings
 
-    def __init__(self, token: str, session: BaseSession | None = None, default: DefaultBotProperties | None = None, webhook_server_settings: WebhookServerSettings | None = None, **kwargs: Any) -> None:
+    def __init__(
+        self,
+        token: str,
+        session: BaseSession | None = None,
+        default: DefaultBotProperties | None = None,
+        webhook_server_settings: WebhookServerSettings | None = None,
+        **kwargs: Any,
+    ) -> None:
         super().__init__(token, session, default, **kwargs)
 
         if webhook_server_settings:
@@ -51,7 +54,7 @@ class CerrrBot(AiogramBot):
         destination: BinaryIO | Path | str | None = None,
         timeout: int = 30,
         chunk_size: int = 65536,
-        seek: bool = True
+        seek: bool = True,
     ) -> BinaryIO | None:
         if not self.session.api.is_local or not (destination := cast(str, destination)):
             return await super().download_file(file_path, destination, timeout, chunk_size, seek)
@@ -72,13 +75,19 @@ class CerrrBot(AiogramBot):
         await dp.start_polling(self)
 
     async def _start_webhook_server(self, dp: Dispatcher) -> None:
-        logger.info("Bot set up. Starting webhook server on %s:%s...", self._webhook_server_settings.webhook_host, self._webhook_server_settings.webhook_port)
+        logger.info(
+            "Bot set up. Starting webhook server on %s:%s...",
+            self._webhook_server_settings.webhook_host,
+            self._webhook_server_settings.webhook_port,
+        )
         dp.startup.register(self._on_webhook_startup)
 
         web_app = self._create_webhook_server(dp)
         runner = web.AppRunner(web_app)
         await runner.setup()
-        site = web.TCPSite(runner, host=self._webhook_server_settings.webhook_host, port=self._webhook_server_settings.webhook_port)
+        site = web.TCPSite(
+            runner, host=self._webhook_server_settings.webhook_host, port=self._webhook_server_settings.webhook_port
+        )
         await site.start()
 
         await asyncio.Event().wait()
@@ -86,7 +95,9 @@ class CerrrBot(AiogramBot):
     async def _on_webhook_startup(self) -> None:
         logger.info("Setting webhook to %s...", self._webhook_server_settings.webhook_endpoint_url)
         await self.delete_webhook()
-        await self.set_webhook(self._webhook_server_settings.webhook_endpoint_url, secret_token=self._webhook_server_settings.webhook_secret)
+        await self.set_webhook(
+            self._webhook_server_settings.webhook_endpoint_url, secret_token=self._webhook_server_settings.webhook_secret
+        )
 
     async def logout(self) -> None:
         """Run this func before starting local server at first time."""

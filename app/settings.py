@@ -1,5 +1,4 @@
 import os
-from enum import StrEnum
 from pathlib import Path
 from typing import Any, Self
 
@@ -7,16 +6,10 @@ from pydantic import Field, field_validator, model_validator
 
 from app.exceptions import InvalidSettingError
 from app.logging import LoggingScope
-from app.types import CerrrBotSettings
+from app.types import AppBaseSettings
 
 
-class BotMode(StrEnum):
-    AUTO = "auto"
-    WEBHOOK = "webhook"
-    POLLING = "polling"
-
-
-class AppSettings(CerrrBotSettings):
+class AppSettings(AppBaseSettings):
     # Base app settings
     debug: bool = Field(default=False)
     logging_level: str = Field(default="DEBUG" if debug else "INFO")

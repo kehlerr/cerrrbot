@@ -1,15 +1,16 @@
+from collections.abc import Sequence
 from datetime import datetime
-from typing import Annotated, Any, Self, Sequence, cast
-
-from loguru import logger
+from typing import Annotated, Any, Self, cast
 
 from aiogram import Bot
 from aiogram.exceptions import TelegramBadRequest
+from loguru import logger
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 
-from app.actions import MessageActions
+from app.exceptions import InvalidMessageDocumentError
 from app.types import ContentType
-from .message_action import MessageAction
+
+from .message_action import DEFAULT_NONE_ACTION, MessageAction
 from .message_document_info import (
     ActionsMenuStored,
     ActionsMenuUpdating,
@@ -27,7 +28,6 @@ from .message_text_info import (
     MessageEntity,
     MessageTextInfo,
 )
-
 
 PyObjectId = Annotated[str, BeforeValidator(str)]
 
@@ -121,13 +121,13 @@ class MessageDocument(BaseModel):
     # --- Domain methods ---
     def get_current_action(self) -> MessageAction:
         if not self.cb_message_info:
-            raise ValueError("Message info is not set")  # TODO: proper exception
+            raise InvalidMessageDocumentError("Message info is not set", msgdoc=self)
 
         return self.cb_message_info.action
 
     def get_current_menu(self) -> ActionsMenuStored:
         if not self.cb_message_info:
-            raise ValueError("Message info is not set")  # TODO: proper exception
+            raise InvalidMessageDocumentError("Message info is not set", msgdoc=self)
 
         return self.cb_message_info.get_current_menu()
 
@@ -146,7 +146,7 @@ class MessageDocument(BaseModel):
         actions_to_add: ActionsMenuUpdating | None = None,
         actions_to_del: Sequence[MessageAction | str] | None = None,
         new_actions_menu: ActionsMenuUpdating | None = None,
-        new_action: MessageAction | None = MessageActions.NONE,
+        new_action: MessageAction | None = DEFAULT_NONE_ACTION,
         new_perform_action_at: int | None = None,
         new_ttl: int | None = None,
         entities: list[dict[str, Any]] | None = None,
@@ -170,7 +170,7 @@ class MessageDocument(BaseModel):
 
         if new_action is not None:
             msg_info.action = new_action
-            if new_action.code == MessageActions.NONE.code:
+            if new_action.code == DEFAULT_NONE_ACTION.code:
                 msg_info.perform_action_at = 0
 
         if entities is not None:
@@ -191,22 +191,21 @@ class MessageDocument(BaseModel):
         if self.cb_message_info is None:
             return
 
+        from app.actions import MessageActions
+
         msg_info = self.cb_message_info
         actions_menus = msg_info.actions_menus or []
         current_menu = msg_info.actions_menus.pop() if msg_info.actions_menus else {}
 
         if actions_to_add is not None:
             for action, action_data in actions_to_add.items():
-                action_code: str = (
-                    action.code if isinstance(action, MessageAction) else action
-                )
+                action_code: str = action.code if isinstance(action, MessageAction) else action
                 current_menu[action_code] = action_data
 
         if actions_to_del is not None:
             for action_to_del in actions_to_del:
                 action_to_del_code: str = (
-                    cast(MessageAction, action_to_del).code
-                    if isinstance(action_to_del, MessageAction) else action_to_del
+                    cast(MessageAction, action_to_del).code if isinstance(action_to_del, MessageAction) else action_to_del
                 )
                 current_menu.pop(action_to_del_code, None)
 
@@ -215,10 +214,7 @@ class MessageDocument(BaseModel):
 
         if new_actions_menu is not None:
             if new_actions_menu:
-                actions_menus.append({
-                    action.code: action_data
-                    for action, action_data in new_actions_menu.items()
-                })
+                actions_menus.append({action.code: action_data for action, action_data in new_actions_menu.items()})
             elif actions_menus:
                 actions_menus.pop()
 
@@ -233,9 +229,8 @@ class MessageDocument(BaseModel):
         msg_info.actions_menus = actions_menus
 
     def get_source_data(self) -> MessageSourceData:
-        if (
-            (forward_origin := self.source.forward_origin) and
-            (forward_origin_data := forward_origin.get_message_source_data(self.chat))
+        if (forward_origin := self.source.forward_origin) and (
+            forward_origin_data := forward_origin.get_message_source_data(self.chat)
         ):
             return forward_origin_data
 
@@ -265,7 +260,7 @@ class MessageDocument(BaseModel):
 
     async def delete_reply_message(self, bot: Bot) -> None:
         if not (message_id := self.cb_message_info and self.cb_message_info.reply_action_message_id):
-            logger.info("[%s] There is no reply message to delete", self.id)
+            logger.info(f"[{self.id}] There is no reply message to delete")
             return
 
         try:

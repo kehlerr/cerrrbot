@@ -1,26 +1,25 @@
 from datetime import datetime, timedelta
-from loguru import logger
 from typing import Any
 
 from aiogram import Bot
+from loguru import logger
 
 from app import app_settings
-
 from app.actions import MessageActions
 from app.file_ops import FileDownloader
 from app.models import ActionResult, MessageDocument
 from app.repositories.message_repository import MessageRepository
-
 from app.types import ContentType, ExecutorCode
 
 from .base import ActionExecutor
 
 
 class KeepActionExecutor(ActionExecutor):
-
     code = ExecutorCode.KEEP
 
-    async def _execute_impl(self, msgdoc: MessageDocument, bot: Bot, *, new_repo: MessageRepository, saved_repo: MessageRepository, **_: Any) -> ActionResult:
+    async def _execute_impl(
+        self, msgdoc: MessageDocument, bot: Bot, *, new_repo: MessageRepository, saved_repo: MessageRepository, **_: Any
+    ) -> ActionResult:
         msgdoc.update_message_info(new_actions_menu={})
 
         await self._move_msgdoc_to_saved(msgdoc, new_repo=new_repo, saved_repo=saved_repo)
@@ -28,7 +27,9 @@ class KeepActionExecutor(ActionExecutor):
 
         return ActionResult()
 
-    async def _move_msgdoc_to_saved(self, msgdoc: MessageDocument, *, new_repo: MessageRepository, saved_repo: MessageRepository) -> None:
+    async def _move_msgdoc_to_saved(
+        self, msgdoc: MessageDocument, *, new_repo: MessageRepository, saved_repo: MessageRepository
+    ) -> None:
 
         await new_repo.delete_msgdoc(msgdoc)
 
@@ -38,7 +39,6 @@ class KeepActionExecutor(ActionExecutor):
 
 
 class MenuBackActionExecutor(ActionExecutor):
-
     code = ExecutorCode.MENU_BACK
 
     async def _execute_impl(self, msgdoc: MessageDocument, bot: Bot, *, new_repo: MessageRepository, **_: Any) -> ActionResult:
@@ -47,7 +47,6 @@ class MenuBackActionExecutor(ActionExecutor):
 
 
 class DeleteRequestActionExecutor(ActionExecutor):
-
     code = ExecutorCode.DELETE_REQUEST
 
     async def _execute_impl(self, msgdoc: MessageDocument, bot: Bot, *, new_repo: MessageRepository, **_: Any) -> ActionResult:
@@ -63,16 +62,17 @@ class DeleteRequestActionExecutor(ActionExecutor):
             new_action=MessageActions.DELETE_REQUEST,
             new_actions_menu=actions_data,
             new_perform_action_at=0,
-            new_repo=new_repo
+            new_repo=new_repo,
         )
         return ActionResult(actions_updated=True)
 
 
 class DeleteActionExecutor(ActionExecutor):
-
     code = ExecutorCode.DELETE
 
-    async def _execute_impl(self, msgdoc: MessageDocument, bot: Bot, *, new_repo: MessageRepository, **kwargs: Any) -> ActionResult:
+    async def _execute_impl(
+        self, msgdoc: MessageDocument, bot: Bot, *, new_repo: MessageRepository, **kwargs: Any
+    ) -> ActionResult:
         for related_msgdoc in await self.get_related_msgdocs(msgdoc, new_repo=new_repo):
             await self._delete_one(related_msgdoc, bot, new_repo=new_repo)
 
@@ -85,10 +85,11 @@ class DeleteActionExecutor(ActionExecutor):
 
 
 class DeleteAfterTimeActionExecutor(ActionExecutor):
-
     code = ExecutorCode.DELETE_AFTER_TIME
 
-    async def _execute_impl(self, msgdoc: MessageDocument, bot: Bot, *, new_repo: MessageRepository, **executor_args: Any) -> ActionResult:
+    async def _execute_impl(
+        self, msgdoc: MessageDocument, bot: Bot, *, new_repo: MessageRepository, **executor_args: Any
+    ) -> ActionResult:
         timeout = executor_args["timeout"]
 
         delete_after = datetime.now() + timedelta(seconds=timeout)
@@ -99,7 +100,6 @@ class DeleteAfterTimeActionExecutor(ActionExecutor):
 
 
 class DownloadActionExecutor(ActionExecutor):
-
     code = ExecutorCode.DOWNLOAD
 
     async def _execute_impl(self, msgdoc: MessageDocument, bot: Bot, *, new_repo: MessageRepository, **_: Any) -> ActionResult:
@@ -113,7 +113,6 @@ class DownloadActionExecutor(ActionExecutor):
 
 
 class DownloadAllActionExecutor(ActionExecutor):
-
     code = ExecutorCode.DOWNLOAD_ALL
 
     async def _execute_impl(self, msgdoc: MessageDocument, bot: Bot, *, new_repo: MessageRepository, **_: Any) -> ActionResult:

@@ -30,12 +30,49 @@ dev = [
     "celery-types>=0.26.0",
     "ruff>=0.16.0",
     "mypy>=2.3.0",
-    "types-redis>=4.6.0.20241004"
+    "types-redis>=4.6.0.20241004",
 ]
 
-[tool.isort]
-profile = "black"
+[tool.ruff]
+line-length = 128
+target-version = "py314"
+exclude = [
+    ".git",
+    ".venv",
+    "__pycache__",
+    "build",
+    "dist",
+]
 
-[tool.black]
-line-length = 90
-target-version = ['py38']
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # Pyflakes
+    "I",   # isort (import sorting)
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+]
+ignore = []
+
+[tool.ruff.lint.per-file-ignores]
+"**/constants.py" = ["E501"]
+"*/constants.py" = ["E501"]
+"app/logging.py" = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]
+combine-as-imports = true
+
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+
+[tool.mypy]
+python_version = "3.14"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+

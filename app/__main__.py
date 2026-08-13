@@ -1,21 +1,19 @@
 #!/usr/bin/env python3
 
 import asyncio
-from loguru import logger
 
 from aiogram import Dispatcher, Router
 from dishka.integrations.aiogram import setup_dishka
-
-from app.bot import handlers_router, make_scheduler, create_periodic_tasks, CheckUserMiddleware
-from app.bot.cerrrbot import CerrrBot
-from app.bot.commands import load_commands
-
-from app.celery_app import app as _  # noqa: F401
+from loguru import logger
 
 from app.actions import MessageActions
-from app.logging import TableLogger
+from app.bot import CheckUserMiddleware, create_periodic_tasks, handlers_router, make_scheduler
+from app.bot.cerrrbot import CerrrBot
+from app.bot.commands import load_commands
+from app.celery_app import app as _  # noqa: F401
 from app.infrastructure.database import check_connection
 from app.ioc import get_app_container
+from app.logging import TableLogger
 from app.plugins_manager import plugins_manager
 
 
@@ -30,10 +28,7 @@ async def main():
 
     plugins_manager.load()
 
-    TableLogger.print_actions_info(
-        "Loaded Actions",
-        MessageActions.get_actions_log_info() + plugins_manager.get_actions_info()
-    )
+    TableLogger.print_actions_info("Loaded Actions", MessageActions.get_actions_log_info() + plugins_manager.get_actions_info())
 
     main_router = Router()
     main_router.message.middleware(CheckUserMiddleware())
