@@ -1,14 +1,13 @@
 from app import app_settings
 from app.logging import ActionLogInfo
-from app.models import MessageAction
+from app.models import DEFAULT_NONE_ACTION, MessageAction
 from app.types import ExecutorCode
-
 
 from .exceptions import DuplicateActionLoadedError
 
 
-class _MESSAGE_ACTIONS:
-    NONE = MessageAction(code="NONE", caption="0", order=0, executor_code=ExecutorCode.NONE)
+class MessageActionRegistry:
+    NONE = DEFAULT_NONE_ACTION
     DELETE_REQUEST = MessageAction(
         code="DEL",
         caption="Delete",
@@ -18,13 +17,9 @@ class _MESSAGE_ACTIONS:
     )
     KEEP = MessageAction(code="KEEP", caption="Keep", order=1, executor_code=ExecutorCode.KEEP)
     DOWNLOAD = MessageAction(code="DL", caption="Download", order=100, executor_code=ExecutorCode.DOWNLOAD)
-    DOWNLOAD_ALL = MessageAction(
-        code="DLAL", caption="Download all", order=101, executor_code=ExecutorCode.DOWNLOAD_ALL
-    )
+    DOWNLOAD_ALL = MessageAction(code="DLAL", caption="Download all", order=101, executor_code=ExecutorCode.DOWNLOAD_ALL)
 
-    DELETE_NOW = MessageAction(
-        code="DELN", caption="Delete now", order=1, executor_code=ExecutorCode.DELETE
-    )
+    DELETE_NOW = MessageAction(code="DELN", caption="Delete now", order=1, executor_code=ExecutorCode.DELETE)
     DELETE_1 = MessageAction(
         code="DEL1",
         caption="Del in 15m",
@@ -47,16 +42,10 @@ class _MESSAGE_ACTIONS:
         executor_args={"timeout": app_settings.delete_timeout_3},
     )
 
-    TASK_STATUS = MessageAction(
-        code="TSK_ST", caption="Show status", order=200, executor_code=ExecutorCode.TASK_GET_STATUS
-    )
-    TASK_ABORT = MessageAction(
-        code="TSK_AB", caption="Stop", order=201, executor_code=ExecutorCode.TASK_ABORT
-    )
+    TASK_STATUS = MessageAction(code="TSK_ST", caption="Show status", order=200, executor_code=ExecutorCode.TASK_GET_STATUS)
+    TASK_ABORT = MessageAction(code="TSK_AB", caption="Stop", order=201, executor_code=ExecutorCode.TASK_ABORT)
 
-    MENU_BACK = MessageAction(
-        code="MENU_BACK", caption="<- Back", order=5000, executor_code=ExecutorCode.MENU_BACK
-    )
+    MENU_BACK = MessageAction(code="MENU_BACK", caption="<- Back", order=5000, executor_code=ExecutorCode.MENU_BACK)
 
     _DEFAULT_ACTIONS = (
         NONE,
@@ -76,9 +65,7 @@ class _MESSAGE_ACTIONS:
         TASK_ABORT,
     )
 
-    BY_CODE = {
-        action.code: action for action in (*_DEFAULT_ACTIONS, *_DEFAULT_CUSTOM_ACTIONS)
-    }
+    BY_CODE = {action.code: action for action in (*_DEFAULT_ACTIONS, *_DEFAULT_CUSTOM_ACTIONS)}
     CUSTOM_ACTION_BY_CODE = {action.code: action for action in _DEFAULT_CUSTOM_ACTIONS}
 
     def load_custom_actions(self, actions: list[MessageAction]) -> None:
@@ -98,4 +85,4 @@ class _MESSAGE_ACTIONS:
         return info
 
 
-MessageActions = _MESSAGE_ACTIONS()
+MessageActions = MessageActionRegistry()

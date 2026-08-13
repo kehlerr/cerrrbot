@@ -1,9 +1,10 @@
-from dataclasses import dataclass
-from enum import StrEnum
 import logging
 import re
 import sys
-from typing import Any
+from dataclasses import dataclass
+from enum import StrEnum
+from typing import Any, cast
+
 from loguru import logger
 
 from app.types import PluginStatus
@@ -27,7 +28,7 @@ class LogColor(StrEnum):
 
 class LogFormatter:
     """Helper class to format text for loguru with colors and styles."""
-    
+
     @staticmethod
     def format_text(
         text: str,
@@ -35,9 +36,9 @@ class LogFormatter:
         bg_color: LogColor | str | None = None,
         bold: bool = False,
     ) -> str:
-        tags_open = []
-        tags_close = []
-        
+        tags_open: list[str] = []
+        tags_close: list[str] = []
+
         if bold:
             tags_open.append("<b>")
             tags_close.insert(0, "</b>")
@@ -48,10 +49,10 @@ class LogFormatter:
             bg_tag = str(bg_color).upper()
             tags_open.append(f"<{bg_tag}>")
             tags_close.insert(0, f"</{bg_tag}>")
-            
+
         open_str = "".join(tags_open)
         close_str = "".join(tags_close)
-        
+
         return f"{open_str}{text}{close_str}"
 
 
@@ -60,6 +61,7 @@ class InterceptHandler(logging.Handler):
     Default handler from examples in loguru documentation.
     See https://loguru.readthedocs.io/en/stable/overview.html#entirely-compatible-with-standard-logging
     """
+
     def emit(self, record):
         # Get corresponding Loguru level if it exists
         try:
@@ -78,9 +80,7 @@ class InterceptHandler(logging.Handler):
             else:
                 break
 
-        logger.opt(depth=depth, exception=record.exc_info).log(
-            level, record.getMessage()
-        )
+        logger.opt(depth=depth, exception=record.exc_info).log(level, record.getMessage())
 
 
 def setup_logger(logging_level: str, logging_scope: LoggingScope) -> None:
@@ -94,7 +94,8 @@ def setup_logger(logging_level: str, logging_scope: LoggingScope) -> None:
 
     def scope_filter(record: Any) -> bool:
         if str(logging_scope).lower() == LoggingScope.APP:
-            return record["name"].startswith("app.") or record["name"] == "app" or record["name"] == "__main__"
+            record_name = cast(str, record["name"])
+            return any((record_name.startswith("app."), record_name == "app", record_name == "__main__"))
 
         return True
 
@@ -131,7 +132,7 @@ class TableLogger:
 
         def strip_tags(text: str) -> str:
             return re.sub(r"<[^>]+>", "", text)
-            
+
         columns_with_idx = ["#"] + columns
         rows_with_idx = [[str(i + 1)] + row for i, row in enumerate(rows)]
 
@@ -140,19 +141,16 @@ class TableLogger:
             for i, cell in enumerate(row):
                 col_widths[i] = max(col_widths[i], len(strip_tags(cell)))
 
-        header = " │ ".join(f"{c:<{w}}" for c, w in zip(columns_with_idx, col_widths))
+        header = " │ ".join(f"{c:<{w}}" for c, w in zip(columns_with_idx, col_widths, strict=True))
         separator = "─┼─".join("─" * w for w in col_widths)
 
         logger.opt(colors=True).info(LogFormatter.format_text(title, color=LogColor.CYAN, bg_color=LogColor.WHITE, bold=True))
         logger.opt(colors=True).info(LogFormatter.format_text(header, color=LogColor.MAGENTA))
         logger.opt(colors=True).info(LogFormatter.format_text(separator, color=LogColor.MAGENTA))
         for row in rows_with_idx:
-            formatted_row = " │ ".join(
-                f"{cell}{' ' * (col_widths[i] - len(strip_tags(cell)))}" 
-                for i, cell in enumerate(row)
-            )
+            formatted_row = " │ ".join(f"{cell}{' ' * (col_widths[i] - len(strip_tags(cell)))}" for i, cell in enumerate(row))
             logger.opt(colors=True).info(formatted_row)
-        logger.info("") # empty line for spacing
+        logger.info("")  # empty line for spacing
 
     @staticmethod
     def print_plugins_info(plugins: list[PluginStatusInfo]) -> None:
@@ -175,10 +173,12 @@ class TableLogger:
     def print_actions_info(title: str, actions: list[ActionLogInfo]) -> None:
         action_rows = []
         for a in actions:
-            action_rows.append([
-                LogFormatter.format_text(a.source_name, color=LogColor.CYAN),
-                LogFormatter.format_text(a.action_code, color=LogColor.GREEN)
-            ])
+            action_rows.append(
+                [
+                    LogFormatter.format_text(a.source_name, color=LogColor.CYAN),
+                    LogFormatter.format_text(a.action_code, color=LogColor.GREEN),
+                ]
+            )
 
         if action_rows:
             TableLogger._print_table(title, ["Source", "Action Code"], action_rows)

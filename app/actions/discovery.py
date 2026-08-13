@@ -1,7 +1,8 @@
 import inspect
-from loguru import logger
 from importlib import import_module
-from pkgutil import walk_packages
+from pkgutil import iter_modules
+
+from loguru import logger
 
 from .action_executors import ActionExecutor
 
@@ -17,8 +18,8 @@ def discover_actions(package_name: str) -> list[type[ActionExecutor]]:
 
     # Walk through all modules in the target package
     prefix = package.__name__ + "."
-    for _, module_name, is_pkg in walk_packages(package.__path__, prefix):
-        if is_pkg:
+    for _, module_name, is_pkg in iter_modules(package.__path__, prefix):
+        if is_pkg or "egg-info" in module_name:
             continue
 
         module = import_module(module_name)

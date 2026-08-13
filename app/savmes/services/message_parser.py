@@ -5,7 +5,9 @@ from httpx import URL
 from app.actions import MessageActions
 from app.models import ActionsData, MessageAction, MessageEntity
 
-_URL_PATTERN = "https?:\\/\\/(?:www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b(?:[-a-zA-Z0-9()@:%_\\+.~#?&\\/=]*)"
+_URL_PATTERN = r"""
+https?:\\/\\/(?:www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b(?:[-a-zA-Z0-9()@:%_\\+.~#?&\\/=]*)
+"""
 URL_REGEX = re.compile(_URL_PATTERN, re.IGNORECASE)
 
 
@@ -32,7 +34,5 @@ class MessageParser:
             links = []
 
         if self._entities:
-           links.extend([
-               entity.url for entity in self._entities if entity.type == "text_link"
-           ])
+            links.extend([entity.url for entity in self._entities if entity.type == "text_link"])
         return tuple(URL(link) for link in set(links))

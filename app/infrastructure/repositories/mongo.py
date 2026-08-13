@@ -1,22 +1,23 @@
-from loguru import logger
 from typing import Any, cast
 
+from loguru import logger
 from pydantic import BaseModel
-from pymongo.asynchronous.database import AsyncDatabase
 from pymongo.asynchronous.collection import AsyncCollection
+from pymongo.asynchronous.database import AsyncDatabase
 from pymongo.errors import PyMongoError
 
-from app.types import TPydanticModel, PydanticModelClass
+from app.types import PydanticModelClass
 
 from .exceptions import InsertEntryError, UpdateEntryError
-
 
 
 class MongoRepository[TPydanticModel]:
     collection_name: str
     model_class: type[TPydanticModel]
 
-    def __init__(self, db: AsyncDatabase, collection_name: str | None = None, model_class: type[TPydanticModel] | None = None) -> None:
+    def __init__(
+        self, db: AsyncDatabase, collection_name: str | None = None, model_class: type[TPydanticModel] | None = None
+    ) -> None:
         self._db = db
 
         if collection_name:
@@ -39,13 +40,15 @@ class MongoRepository[TPydanticModel]:
         return [self._model_class.model_validate(doc) for doc in documents]
 
     async def insert(self, item: TPydanticModel) -> TPydanticModel:
-        document = cast(PydanticModelClass[TPydanticModel], item).model_dump(by_alias=True, exclude_unset=True, exclude_none=True)
+        document = cast(PydanticModelClass[TPydanticModel], item).model_dump(
+            by_alias=True, exclude_unset=True, exclude_none=True
+        )
 
         try:
             await self.collection.insert_one(document)
-        except PyMongoError:
+        except PyMongoError as exc:
             logger.exception("Error occured while inserting document")
-            raise InsertEntryError(document=document)
+            raise InsertEntryError(document=document) from exc
         else:
             logger.debug(f"Successfully inserted document: {document}")
 
@@ -65,9 +68,9 @@ class MongoRepository[TPydanticModel]:
                 result = await self.collection.update_many(query, update_payload)
             else:
                 result = await self.collection.update_one(query, update_payload)
-        except PyMongoError:
+        except PyMongoError as exc:
             logger.exception("Error occured while updating document")
-            raise UpdateEntryError(query=query, update_payload=update_payload)
+            raise UpdateEntryError(query=query, update_payload=update_payload) from exc
         else:
             logger.debug(f"Document updated successfully: {update_payload}")
 

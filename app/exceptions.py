@@ -9,12 +9,7 @@ class AppError(Exception):
 
     detail: str = "Internal error occured."
 
-    def __init__(
-        self,
-        log_message: str | None = None,
-        detail: str | None = None,
-        **context: Any
-    ) -> None:
+    def __init__(self, log_message: str | None = None, detail: str | None = None, **context: Any) -> None:
         # Override default user message if provided dynamically
         if detail:
             self.detail = detail
@@ -29,7 +24,6 @@ class AppError(Exception):
         if self.context:
             return f"{self.log_message} | Context: {self.context}"
         return self.log_message
-
 
 
 class InvalidSettingError(AppError):

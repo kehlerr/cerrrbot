@@ -1,19 +1,15 @@
-
 from app.exceptions import AppError
 
 
 class ActionError(AppError):
-
     detail = "Action error occured."
 
 
 class DuplicateActionLoadedError(ActionError):
-
     detail = "Action has duplicated code."
 
 
 class DuplicateActionExecutorError(ActionError):
-
     detail = "Action executor has duplicated code."
 
 

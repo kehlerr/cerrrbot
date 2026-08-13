@@ -1,4 +1,3 @@
-from .message_actions import MessageActions
+from .message_actions import MessageActionRegistry, MessageActions
 
-
-__all__ = ("MessageActions",)
+__all__ = ("MessageActions", "MessageActionRegistry")

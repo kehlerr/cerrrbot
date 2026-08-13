@@ -3,7 +3,6 @@ from aiogram.filters import Command
 
 from app.plugins_manager import plugins_manager
 
-
 commands_router = Router()
 
 

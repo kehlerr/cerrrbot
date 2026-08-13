@@ -1,6 +1,3 @@
-from . import mongo as db
+from .message_repository import MessageRepository
 
-from .redis import RedisRepository
-from .cached_model_repository import CachedModelRepository
-
-__all__ = ("db", "CachedModelRepository", "RedisRepository")
+__all__ = ("MessageRepository",)

@@ -1,16 +1,15 @@
-from loguru import logger
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 
 from aiogram import Bot
 from aiogram.types import Message
+from loguru import logger
 
 from app import app_settings
-
 from app.actions import MessageActions
+from app.actions.action_executors.action_executor_registry import ActionExecutorRegistry
 from app.exceptions import AppError
 from app.models import ActionResult, MessageDocument
 from app.repositories.message_repository import MessageRepository
-from app.actions.action_executors.action_executor_registry import ActionExecutorRegistry
 from app.types import MessageActionCode
 
 from ..repositories.cache import SavmesCacheRepository
@@ -22,13 +21,12 @@ from .content_strategies import (
 
 
 class SavmesService:
-
     def __init__(
         self,
         saved_messages_repo: MessageRepository,
         new_messages_repo: MessageRepository,
         cache_repo: SavmesCacheRepository,
-        action_executor_registry: ActionExecutorRegistry
+        action_executor_registry: ActionExecutorRegistry,
     ) -> None:
 
         self._saved_messages_repo = saved_messages_repo
@@ -57,9 +55,7 @@ class SavmesService:
         return cls_strategy_by_content_type.get(content_type, ContentStrategy)  # type: ignore
 
     async def set_reply_action_message_id(self, msgdoc: MessageDocument, reply_action_message_id: int) -> None:
-        msgdoc.update_message_info(
-            new_action=None, reply_action_message_id=reply_action_message_id
-        )
+        msgdoc.update_message_info(new_action=None, reply_action_message_id=reply_action_message_id)
 
         try:
             await self._new_messages_repo.update_msgdoc(msgdoc)
@@ -72,7 +68,9 @@ class SavmesService:
         msgdoc.is_subsequent_in_media_group = is_subsequent_in_media_group
         return msgdoc
 
-    async def execute_message_action(self, msgdoc: MessageDocument, bot: Bot, action_code: MessageActionCode | None = None) -> ActionResult:
+    async def execute_message_action(
+        self, msgdoc: MessageDocument, bot: Bot, action_code: MessageActionCode | None = None
+    ) -> ActionResult:
         if action_code:
             msgdoc.update_message_info(new_action=MessageActions.BY_CODE[action_code])
 
@@ -81,12 +79,14 @@ class SavmesService:
 
         try:
             action_args = {**action.executor_args, **actions_menu[action.code]}
-        except (TypeError, KeyError):
+        except TypeError, KeyError:
             action_args = {**action.executor_args}
 
         logger.info(f"Performing action: {action.code} with executor: {action.executor_code} on msgdoc: {msgdoc.id}")
 
-        return await self._action_executor_registry.execute(action, msgdoc, bot, new_repo=self._new_messages_repo, saved_repo=self._saved_messages_repo, **action_args)
+        return await self._action_executor_registry.execute(
+            action, msgdoc, bot, new_repo=self._new_messages_repo, saved_repo=self._saved_messages_repo, **action_args
+        )
 
     async def get_messages_to_execute_actions(self) -> list[MessageDocument]:
         filter_search = {
@@ -96,7 +96,7 @@ class SavmesService:
             }
         }
         messages = await self._new_messages_repo.get_messages_by_filter(filter_search)
-        logger.debug("Found {} messages to perform action".format(len(messages)))
+        logger.debug(f"Found {len(messages)} messages to perform action")
         return messages
 
     async def delete_deprecated_messages(self, bot: Bot) -> None:
@@ -107,7 +107,7 @@ class SavmesService:
         }
 
         msgdocs = await self._new_messages_repo.get_messages_by_filter(filter_search)
-        logger.debug("Found {} deprecated messages".format(len(msgdocs)))
+        logger.debug(f"Found {len(msgdocs)} deprecated messages")
         for msgdoc in msgdocs:
             await msgdoc.delete_reply_message(bot)
 

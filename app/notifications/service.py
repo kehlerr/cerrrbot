@@ -1,8 +1,8 @@
-from loguru import logger
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 
 from aiogram import Bot
 from aiogram.exceptions import TelegramBadRequest
+from loguru import logger
 
 from app.exceptions import AppError
 
@@ -44,16 +44,13 @@ class NotificationService:
             await bot.send_message(chat_id=notification.chat_id, text=notification.text)
         except Exception as exc:
             logger.exception(exc)
-            raise SendNotificationMessageError(notification=notification)
+            raise SendNotificationMessageError(notification=notification) from exc
 
     async def repeat_push(self, notification: Notification) -> None:
         send_count = notification.send_count - 1 if notification.send_count > 0 else notification.send_count
         new_notificaton = notification.model_copy(
-            update = {
-                "send_at": int(datetime.now(tz=UTC).timestamp()) + notification.repeat_in,
-                "send_count": send_count
-            },
-            deep=True
+            update={"send_at": int(datetime.now(tz=UTC).timestamp()) + notification.repeat_in, "send_count": send_count},
+            deep=True,
         )
         await self.push_message_notification(new_notificaton)
 
@@ -65,6 +62,6 @@ class NotificationService:
             await self._repo.insert(key, notification)
         except AppError as exc:
             logger.exception("Error occured while inserting notification: %s", exc)
-            raise PushNotificationError(key=key)
+            raise PushNotificationError(key=key) from exc
 
         logger.info(f"Notification pushed: {key}")

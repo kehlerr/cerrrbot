@@ -1,8 +1,7 @@
-from app.types import CerrrBotSettings
+from app.types import AppBaseSettings
 
 
-class InfrastructureSettings(CerrrBotSettings):
-
+class InfrastructureSettings(AppBaseSettings):
     # MongoDB settings
     mongo_db_host: str = "localhost"
     mongo_db_port: int = 27017

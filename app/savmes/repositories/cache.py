@@ -1,10 +1,8 @@
-from app.models import MessageDocument
-from app.repositories import RedisRepository
+from app.infrastructure.repositories import RedisRepository
 
 
 class SavmesCacheRepository(RedisRepository):
-
-    KEY_PREFIX="svm"
+    KEY_PREFIX = "svm"
 
     async def is_subsequent_in_media_group(self, media_group_id: str | None) -> bool:
         if not media_group_id:

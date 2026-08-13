@@ -1,5 +1,5 @@
 from app import app_settings
-from app.repositories import CachedModelRepository
+from app.infrastructure.repositories import CachedModelRepository
 
 from .notification import Notification
 

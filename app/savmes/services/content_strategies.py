@@ -1,7 +1,6 @@
-from typing import Mapping
+from collections.abc import Mapping
 
 from app import app_settings
-
 from app.actions import MessageActions
 from app.models import ActionsData, MessageAction, MessageDocument, PreparedMessageInfo
 from app.types import ContentType
@@ -24,7 +23,6 @@ class ContentStrategyBase:
         msgdoc.set_message_info(prepared_message_info)
         return msgdoc
 
-
     @classmethod
     def prepare_message_info(cls, msgdoc: MessageDocument) -> PreparedMessageInfo:
 
@@ -36,11 +34,7 @@ class ContentStrategyBase:
         if parsed_actions := cls._parse_custom_actions(msgdoc):
             actions_menu.update(parsed_actions)
 
-        return PreparedMessageInfo(
-            action=cls.DEFAULT_ACTION,
-            actions_menu=actions_menu,
-            ttl=cls.DEFAULT_MESSAGE_TTL
-        )
+        return PreparedMessageInfo(action=cls.DEFAULT_ACTION, actions_menu=actions_menu, ttl=cls.DEFAULT_MESSAGE_TTL)
 
     @classmethod
     def _parse_custom_actions(cls, msgdoc: MessageDocument) -> dict[MessageAction, ActionsData]:
@@ -50,11 +44,10 @@ class ContentStrategyBase:
         return parser.actions
 
 
-class ContentStrategy(ContentStrategyBase):
-    ...
+class ContentStrategy(ContentStrategyBase): ...
 
-class CustomizableContentStrategy(ContentStrategy):
-    ...
+
+class CustomizableContentStrategy(ContentStrategy): ...
 
 
 class _DownloadableContentStrategy(ContentStrategy):
@@ -73,16 +66,13 @@ class _DownloadableContentStrategy(ContentStrategy):
         message_actions = message_info.actions_menu
 
         target_attr = getattr(msgdoc, cls.content_type_key, None)
-        fsize: int = 0
-        if (
-            cls.content_type_key == ContentType.PHOTO
-            or cls.content_type_key == ContentType.RICH_MESSAGE_MEDIA
-        ):
-            fsize = 0
+        file_size: int = 0
+        if cls.content_type_key == ContentType.PHOTO or cls.content_type_key == ContentType.RICH_MESSAGE_MEDIA:
+            file_size = 0
         elif target_attr and hasattr(target_attr, "file_size"):
-            fsize = getattr(target_attr, "file_size") or 0
+            file_size = target_attr.file_size or 0
 
-        if app_settings.max_load_file_size < 0 or fsize < app_settings.max_load_file_size:
+        if app_settings.max_load_file_size < 0 or file_size < app_settings.max_load_file_size:
             message_info.action = MessageActions.DOWNLOAD
             if message_actions and msgdoc.media_group_id:
                 message_actions.pop(MessageActions.DOWNLOAD, None)

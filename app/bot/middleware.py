@@ -1,8 +1,9 @@
-from loguru import logger
-from typing import Any, Awaitable, Callable
+from collections.abc import Awaitable, Callable
+from typing import Any
 
 from aiogram import BaseMiddleware
 from aiogram.types import Message
+from loguru import logger
 
 from app import app_settings
 
@@ -17,8 +18,4 @@ class CheckUserMiddleware(BaseMiddleware):
         if (user_sender := message.from_user) and user_sender.id in app_settings.allowed_users:
             return await handler(message, data)
 
-        logger.warning(
-            "Someone tried to send message;\nUser: {};\nMessage: {}".format(
-                user_sender, message
-            )
-        )
+        logger.warning(f"Someone tried to send message;\nUser: {user_sender};\nMessage: {message}")

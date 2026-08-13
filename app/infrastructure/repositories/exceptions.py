@@ -25,7 +25,6 @@ class UpdateEntryError(RepositoryBaseError):
     detail = "Error occured while updating existing entry."
 
 
-
 class DuplicatedEntryError(RepositoryBaseError):
     """
     Raised if entry with specified key already exists.

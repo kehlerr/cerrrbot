@@ -5,68 +5,60 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.types import ContentType
 
 
-
 class MediaAttachment(BaseModel):
-
     model_config = ConfigDict(extra="allow", populate_by_name=True)
 
     file_id: str
     file_unique_id: str
     file_size: int | None = None
 
+    _SORT_KEY: ClassVar[str | None] = None
+
     @classmethod
     def best_variant(cls, variants: Self | list[Self] | None) -> Self | None:
         if not isinstance(variants, list):
             return variants or None
 
-        if len(variants) > 1:
-            return sorted(
-                variants, key=lambda v: getattr(v, "height"), reverse=True
-            )[0]
-        else:
-            return variants[0] if variants else None
+        if len(variants) > 1 and (sort_key := variants[0]._SORT_KEY):
+            return sorted(variants, key=lambda v: getattr(v, sort_key), reverse=True)[0]
+
+        return variants[0] if variants else None
 
 
-class PhotoAttachment(MediaAttachment):
+class _ShapedMediaAttachment(MediaAttachment):
+    _SORT_KEY = "height"
+
     width: int
     height: int
 
 
-class MediaThumbnail(PhotoAttachment):
-    ...
+class PhotoAttachment(_ShapedMediaAttachment): ...
 
 
-class DocumentAttachment(MediaAttachment):
-    thumbnail: MediaThumbnail | None = None
-    file_name: str | None = None
-    mime_type: str | None = None
+class MediaThumbnail(PhotoAttachment): ...
 
 
-class VideoAttachment(MediaAttachment):
-    width: int
-    height: int
+class VideoAttachment(_ShapedMediaAttachment):
     duration: int
     thumbnail: MediaThumbnail | None = None
     file_name: str | None = None
     mime_type: str | None = None
 
 
-class AnimationAttachment(MediaAttachment):
-    width: int
-    height: int
+class AnimationAttachment(_ShapedMediaAttachment):
     duration: int
     thumbnail: MediaThumbnail | None = None
     file_name: str | None = None
     mime_type: str | None = None
 
 
-class AudioAttachment(MediaAttachment):
-    duration: int
-    performer: str | None = None
-    title: str | None = None
-    file_name: str | None = None
-    mime_type: str | None = None
+class StickerAttachment(_ShapedMediaAttachment):
+    type: str = "regular"
+    is_animated: bool = False
+    is_video: bool = False
     thumbnail: MediaThumbnail | None = None
+    emoji: str | None = None
+    set_name: str | None = None
 
 
 class VideoNoteAttachment(MediaAttachment):
@@ -80,15 +72,19 @@ class VoiceAttachment(MediaAttachment):
     mime_type: str | None = None
 
 
-class StickerAttachment(MediaAttachment):
-    type: str = "regular"
-    width: int
-    height: int
-    is_animated: bool = False
-    is_video: bool = False
+class AudioAttachment(MediaAttachment):
+    duration: int
+    performer: str | None = None
+    title: str | None = None
+    file_name: str | None = None
+    mime_type: str | None = None
     thumbnail: MediaThumbnail | None = None
-    emoji: str | None = None
-    set_name: str | None = None
+
+
+class DocumentAttachment(MediaAttachment):
+    thumbnail: MediaThumbnail | None = None
+    file_name: str | None = None
+    mime_type: str | None = None
 
 
 class PollOptionInfo(BaseModel):
@@ -113,7 +109,7 @@ class PollInfo(BaseModel):
 
 class RichMessageBlock(BaseModel):
     type: str | None = None
-    blocks: list[RichMessageBlock] | None = None
+    blocks: list[Self] | None = None
     photo: list[PhotoAttachment] | None = None
     video: VideoAttachment | None = None
     document: DocumentAttachment | None = None
@@ -146,8 +142,7 @@ class RichMessageBlock(BaseModel):
             media_items_raw.append(self.sticker)
 
         media_items: list[MediaAttachment] = [
-            attachment for attachment in (MediaAttachment.best_variant(m) for m in media_items_raw)
-            if attachment is not None
+            attachment for attachment in (m.best_variant(m) for m in media_items_raw) if attachment is not None
         ]
 
         if self.blocks:
@@ -186,7 +181,7 @@ class MessageMedia(BaseModel):
     def from_message(cls, message: Any) -> Self | None:
         raw_dump = message.model_dump(by_alias=True, exclude_unset=True, exclude_none=True)
         if hasattr(message, "rich_message") and "rich_message" not in raw_dump:
-            if (rich_msg := getattr(message, "rich_message")) is not None:
+            if (rich_msg := message.rich_message) is not None:
                 if isinstance(rich_msg, BaseModel):
                     raw_dump["rich_message"] = rich_msg.model_dump(by_alias=True, exclude_unset=True, exclude_none=True)
                 elif isinstance(rich_msg, dict):

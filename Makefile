@@ -34,7 +34,14 @@ celery:
 	uv run celery -A app.celery_app worker --loglevel=DEBUG
 
 pretty:
-	isort . && black . && flake8 .
+	uv run ruff check --fix .
+	uv run ruff format .
+
+lint:
+	uv run ruff check .
+	uv run ruff format --check .
+	uv run mypy app
+
 
 sync:
 	uv sync --all-packages

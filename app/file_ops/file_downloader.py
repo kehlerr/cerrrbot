@@ -1,13 +1,14 @@
-from loguru import logger
 import hashlib
+from collections.abc import Mapping
 from datetime import datetime
 from pathlib import Path
-from typing import Mapping, ClassVar, cast
+from typing import ClassVar, cast
 
 from aiogram import Bot
+from loguru import logger
 
 from app.exceptions import InvalidMessageDocumentError
-from app.models import MessageDocument, MediaAttachment
+from app.models import MediaAttachment, MessageDocument
 from app.models.message_media import StickerAttachment
 from app.types import ContentType
 
@@ -16,8 +17,6 @@ from .ops import save_file
 
 
 class FileDownloader:
-
-    SORT_KEY: str = "height"
     FILE_EXTENSION_BY_CONTENT_TYPE: ClassVar[Mapping[str | ContentType, str]] = {
         ContentType.PHOTO: "jpg",
         ContentType.DOCUMENT: "pdf",
@@ -28,7 +27,6 @@ class FileDownloader:
         ContentType.VOICE: "ogg",
         ContentType.STICKER: "webp",
     }
-
 
     @classmethod
     async def download_one(cls, msgdoc: MessageDocument, bot: Bot) -> None:
@@ -52,7 +50,9 @@ class FileDownloader:
         logger.info(f"[{msgdoc.id}] Start downloading file...")
 
         if not (media_attachments := msgdoc.get_media_attachments(msgdoc.content_type)):
-            raise # TODO: proper exception
+            raise InvalidMessageDocumentError(
+                f"Message document [{msgdoc.id}] has no media attachments for content type: {msgdoc.content_type}"
+            )
 
         for media_attachment in media_attachments:
             await cls._download_file_impl(msgdoc, media_attachment, bot)
@@ -61,10 +61,10 @@ class FileDownloader:
 
     @classmethod
     async def _download_stickerpack(cls, msgdoc: MessageDocument, bot: Bot) -> None:
-        if not msgdoc.media or not (sticker := msgdoc.media.sticker):
+        if not msgdoc.media or not (sticker_attachment := msgdoc.media.sticker):
             raise InvalidMessageDocumentError(detail="Message has no sticker")
 
-        if not (sticker_set_name := sticker.set_name):
+        if not (sticker_set_name := sticker_attachment.set_name):
             raise InvalidStickerSetError(detail="Sticker has no set name")
 
         try:
@@ -75,7 +75,7 @@ class FileDownloader:
             ) from get_sticker_set_exc
 
         for sticker in sticker_set.stickers:
-            await cls._download_file_impl(msgdoc, cast(MediaAttachment, sticker), bot, dir_name=sticker_set_name)
+            await cls._download_file_impl(msgdoc, cast(StickerAttachment, sticker), bot, dir_name=sticker_set_name)
 
     @classmethod
     async def _download_file_impl(
@@ -100,10 +100,10 @@ class FileDownloader:
         if msgdoc.content_type == ContentType.STICKER:
             downloadable = cast(StickerAttachment, downloadable)
             if downloadable.is_animated or downloadable.is_video:
-                ext = "webm"
+                sticker_ext = "webm"
             else:
-                ext = cls.FILE_EXTENSION_BY_CONTENT_TYPE[ContentType.STICKER]
-            return f"{file_uid_hashed}.{ext}"
+                sticker_ext = cls.FILE_EXTENSION_BY_CONTENT_TYPE[ContentType.STICKER]
+            return f"{file_uid_hashed}.{sticker_ext}"
 
         message_date = msgdoc.get_message_origin_date()
 
@@ -130,6 +130,7 @@ class FileDownloader:
                 ext = "webp"
             elif hasattr(downloadable, "mime_type") and (mime := getattr(downloadable, "mime_type", None)):
                 import mimetypes
+
                 if guessed := mimetypes.guess_extension(mime):
                     ext = guessed.lstrip(".").lower()
 
