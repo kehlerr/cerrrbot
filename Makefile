@@ -59,17 +59,26 @@ logs_recent:
 logs_all:
 	docker-compose $(DOCKER_COMPOSE_ARGS) logs
 
-deploy: dc_stop dc_rm dc_up
+deploy: dc_pull dc_restart dc_prune
 	@echo "deploy finished"
+
+dc_pull:
+	@docker-compose $(DOCKER_COMPOSE_ARGS) pull $(DOCKER_COMPOSE_APP_SERVICES)
 
 dc_up:
 	@docker-compose $(DOCKER_COMPOSE_ARGS) up -d
+
+dc_restart:
+	@docker-compose $(DOCKER_COMPOSE_ARGS) up -d --no-deps $(DOCKER_COMPOSE_APP_SERVICES)
 
 dc_stop:
 	@docker-compose $(DOCKER_COMPOSE_ARGS) stop $(DOCKER_COMPOSE_APP_SERVICES)
 
 dc_stop_all:
 	@docker-compose $(DOCKER_COMPOSE_ARGS) stop
+
+dc_prune:
+	@docker image prune -f
 
 dc_rm: _dc_rm_containers _dc_rm_images
 	@echo "docker cleaning done"
