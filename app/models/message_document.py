@@ -266,4 +266,4 @@ class MessageDocument(BaseModel):
         try:
             await bot.delete_message(self.chat.id, message_id)
         except TelegramBadRequest as telegram_bad_request:
-            logger.warning("No need to delete reply message: %s", telegram_bad_request)
+            logger.warning(f"No need to delete reply message: {telegram_bad_request}")

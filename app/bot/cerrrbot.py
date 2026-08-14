@@ -38,7 +38,7 @@ class CerrrBot(AiogramBot):
         if cerrrbot_settings.mode == BotModeType.WEBHOOK:
             webhook_server_settings = WebhookServerSettings()  # type: ignore
 
-            logger.info("Configuring local Telegram API server session (%s)...", webhook_server_settings.bot_api_server_uri)
+            logger.info(f"Configuring local Telegram API server session ({webhook_server_settings.bot_api_server_uri})...")
             api_server = TelegramAPIServer.from_base(webhook_server_settings.bot_api_server_uri, is_local=True)
             session = AiohttpSession(api=api_server)
         else:
@@ -75,11 +75,8 @@ class CerrrBot(AiogramBot):
         await dp.start_polling(self)
 
     async def _start_webhook_server(self, dp: Dispatcher) -> None:
-        logger.info(
-            "Bot set up. Starting webhook server on %s:%s...",
-            self._webhook_server_settings.webhook_host,
-            self._webhook_server_settings.webhook_port,
-        )
+        host, port = self._webhook_server_settings.webhook_host, self._webhook_server_settings.webhook_port
+        logger.info(f"Bot set up. Starting webhook server on {host}:{port}...")
         dp.startup.register(self._on_webhook_startup)
 
         web_app = self._create_webhook_server(dp)
@@ -93,7 +90,7 @@ class CerrrBot(AiogramBot):
         await asyncio.Event().wait()
 
     async def _on_webhook_startup(self) -> None:
-        logger.info("Setting webhook to %s...", self._webhook_server_settings.webhook_endpoint_url)
+        logger.info(f"Setting webhook to {self._webhook_server_settings.webhook_endpoint_url}...")
         await self.delete_webhook()
         await self.set_webhook(
             self._webhook_server_settings.webhook_endpoint_url, secret_token=self._webhook_server_settings.webhook_secret
