@@ -24,6 +24,12 @@
 - [Development & Makefile Commands](#development--makefile-commands)
   - [Polling Mode](#polling-mode)
   - [Webhook Mode & Local Telegram Bot API Server](#webhook-mode--local-telegram-bot-api-server)
+- [CI/CD & Automated VPS Deployment](#cicd--automated-vps-deployment)
+  - [Release Workflow with Git Tags](#release-workflow-with-git-tags)
+  - [One-Time VPS Setup](#one-time-vps-setup)
+  - [Configuring the Dedicated Deploy User](#configuring-the-dedicated-deploy-user)
+  - [Adding GitHub Git Deploy Key](#adding-github-git-deploy-key)
+  - [Configuring GitHub Actions Secrets](#configuring-github-actions-secrets)
 - [Configuration Reference](#configuration-reference)
 - [Bot Execution Modes](#bot-execution-modes)
 - [Plugin System & Extensibility](#plugin-system--extensibility)
@@ -186,10 +192,14 @@ The included `Makefile` provides convenient shortcuts for development, testing, 
 | `make celery` | Start the Celery worker locally with `uv run celery` |
 | `make pretty` | Format code and auto-fix linting issues with Ruff |
 | `make lint` | Run Ruff format check, Ruff linter, and MyPy type checks |
-| `make dc_up` | Build and start all Docker containers in background |
+| `make dc_build` | Build local Docker images from `./docker/Dockerfile` |
+| `make dc_pull` | Pull application images from GitHub Container Registry (`ghcr.io`) |
+| `make dc_up` | Start all Docker containers in background |
+| `make dc_restart` | Recreate and restart application containers (`app-bot`, `app-celery-worker`) |
 | `make dc_stop` | Stop application Docker containers (`app-bot`, `app-celery-worker`) |
-| `make dc_stop_all` | Stop all Docker containers (including Redis and MongoDB) |
-| `make deploy` | Re-deploy containers (`dc_stop` -> `dc_rm` -> `dc_up`) |
+| `make dc_stop_all` | Stop all Docker containers (including Redis, MongoDB, and TG server) |
+| `make dc_prune` | Clean up dangling/unused Docker images (`docker image prune -f`) |
+| `make deploy` | Pull latest app image, recreate app containers, and prune old images |
 | `make logs` | Stream logs for bot and Celery worker containers |
 | `make clean` | Clean up temporary files, caches, and build artifacts |
 
@@ -366,3 +376,135 @@ __all__ = ("plugin",)
 ```
 
 Once placed in `app/plugins/`, the plugin is automatically discovered, verified, and loaded on bot startup.
+
+---
+
+## CI/CD & Automated VPS Deployment
+
+cerrrbot includes an automated CI/CD pipeline built with **GitHub Actions** and **GitHub Container Registry (`ghcr.io`)**.
+
+Whenever a new semantic version tag (e.g., `v1.0.0`) is pushed to GitHub, GitHub Actions:
+1. Builds the Docker image for `linux/amd64` using `docker/buildx` and caching.
+2. Pushes the stateless, secret-free image to `ghcr.io/kehlerr/cerrrbot:vX.Y.Z` and `ghcr.io/kehlerr/cerrrbot:latest`.
+3. Connects to your VPS via SSH as the `deploy` user.
+4. Pulls the new image, pulls git tag updates, and recreates `app-bot` and `app-celery-worker` without database downtime.
+5. Cleans up old unused Docker images automatically.
+
+---
+
+### Release Workflow with Git Tags
+
+To release and deploy a new version:
+
+```bash
+# 1. Commit your changes
+git add .
+git commit -m "Release version 1.0.0"
+git push origin main
+
+# 2. Create and push a semantic version tag
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+GitHub Actions will automatically run the `.github/workflows/deploy.yml` workflow and update your VPS.
+
+---
+
+### One-Time VPS Setup Guide
+
+#### 1. Setup the Dedicated `deploy` User
+On your VPS (as `root` or with `sudo`):
+
+```bash
+# Create deploy user and add to docker group
+sudo useradd -m -s /bin/bash deploy
+sudo usermod -aG docker deploy
+
+# Create SSH folder
+sudo mkdir -p /home/deploy/.ssh
+sudo chmod 700 /home/deploy/.ssh
+```
+
+#### 2. Generate SSH Keys
+
+You need **two distinct SSH keys**:
+
+##### Key A: GitHub Actions ➔ VPS (Login Key)
+```bash
+# Generate key for GitHub Actions login
+sudo ssh-keygen -t ed25519 -C "github-actions-to-vps" -f /home/deploy/.ssh/actions_vps_key -N ""
+
+# Authorize public key for incoming SSH logins
+sudo cp /home/deploy/.ssh/actions_vps_key.pub /home/deploy/.ssh/authorized_keys
+sudo chmod 600 /home/deploy/.ssh/authorized_keys
+sudo chown -R deploy:deploy /home/deploy/.ssh
+
+# Display PRIVATE key to copy into GitHub Secret (VPS_SSH_KEY):
+sudo cat /home/deploy/.ssh/actions_vps_key
+```
+
+##### Key B: VPS ➔ GitHub (Git Deploy Key)
+```bash
+# Switch to deploy user
+sudo -u deploy -i
+
+# Generate GitHub Deploy Key
+ssh-keygen -t ed25519 -C "vps-cerrrbot-deploy-key" -f ~/.ssh/id_ed25519 -N ""
+
+# View public key
+cat ~/.ssh/id_ed25519.pub
+```
+1. Go to your GitHub repository: **Settings ➔ Deploy Keys ➔ Add deploy key**.
+2. Title: `VPS /opt/cerrrbot`.
+3. Paste the contents of `~/.ssh/id_ed25519.pub` (leave *Allow write access* unchecked).
+4. On VPS, trust GitHub and verify connection:
+   ```bash
+   ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
+   ssh -T git@github.com
+   ```
+
+#### 3. Clone Repository & Setup Production `.env`
+As the `deploy` user:
+
+```bash
+# Prepare project directory
+sudo mkdir -p /opt/cerrrbot
+sudo chown -R deploy:deploy /opt/cerrrbot
+
+# Clone via SSH (including all submodules)
+git clone --recurse-submodules git@github.com:kehlerr/cerrrbot.git /opt/cerrrbot
+cd /opt/cerrrbot
+
+# Create external Docker network and volumes
+docker network create cerrrbot-network
+docker volume create cerrrbot-data
+
+# Create production .env
+cp sample.env .env
+nano .env
+```
+
+Ensure `/opt/cerrrbot/.env` contains:
+- `CERRRBOT_TOKEN="..."`
+- `CERRRBOT_ALLOWED_USERS="123456789"`
+- `APP_IMAGE_NAME=ghcr.io/kehlerr/cerrrbot:latest`
+
+#### 4. Start Infrastructure Services Once
+```bash
+cd /opt/cerrrbot
+docker compose -f docker/docker-compose-infra.yml --env-file .env up -d
+```
+
+---
+
+### Configuring GitHub Actions Secrets
+
+Go to GitHub Repo ➔ **Settings ➔ Secrets and variables ➔ Actions ➔ New repository secret**:
+
+| Secret Name | Description | Example Value |
+| :--- | :--- | :--- |
+| **`VPS_HOST`** | VPS IP Address or Hostname | `198.51.100.24` |
+| **`VPS_PORT`** | SSH Port (default: 22) | `22` |
+| **`VPS_USER`** | SSH User on VPS | `deploy` |
+| **`VPS_SSH_KEY`** | Full OpenSSH Private Key A | `-----BEGIN OPENSSH PRIVATE KEY----- ...` |
