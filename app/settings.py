@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 from typing import Any, Self
+from zoneinfo import ZoneInfo
 
 from pydantic import Field, field_validator, model_validator
 
@@ -14,6 +15,7 @@ class AppSettings(AppBaseSettings):
     debug: bool = Field(default=False)
     logging_level: str = Field(default="DEBUG" if debug else "INFO")
     logging_scope: LoggingScope = Field(default=LoggingScope.ALL)
+    timezone: str = Field(default="UTC")
 
     max_load_file_size: int = Field(default=20_000_000)
     message_ttl: int = Field(default=48 * 60 * 60 - 60 * 60)  # bot cannot operate with message that sent more than 48h ago
@@ -38,6 +40,18 @@ class AppSettings(AppBaseSettings):
     notifications_db: int = 3
     notifications_cache_key_prefix: str = "cerrrbot_notification"
     check_notifications_cd_period: int = 10
+
+    @field_validator("timezone", mode="before")
+    @classmethod
+    def validate_timezone(cls, v: Any) -> str:
+        if not v:
+            return "UTC"
+        tz_str = str(v).strip("\"' ")
+        try:
+            ZoneInfo(tz_str)
+        except Exception as e:
+            raise InvalidSettingError(f"Invalid value for timezone: {tz_str}") from e
+        return tz_str
 
     @field_validator("allowed_users", mode="before")
     @classmethod
@@ -72,6 +86,10 @@ class AppSettings(AppBaseSettings):
             raise InvalidSettingError(f"PLUGINS_DIR_PATH doesn't exists: {plugins_dir}")
 
         return self
+
+    @property
+    def tz(self) -> ZoneInfo:
+        return ZoneInfo(self.timezone)
 
     @property
     def main_user_chat(self) -> int:
