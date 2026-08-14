@@ -61,7 +61,7 @@ class NotificationService:
         try:
             await self._repo.insert(key, notification)
         except AppError as exc:
-            logger.exception("Error occured while inserting notification: %s", exc)
+            logger.exception(f"Error occured while inserting notification: {exc}")
             raise PushNotificationError(key=key) from exc
 
         logger.info(f"Notification pushed: {key}")

@@ -27,7 +27,7 @@ async def on_received_message(message: Message, bot: Bot, savmes_service: FromDi
     try:
         msgdoc = await savmes_service.add_new_message(message)
     except AppError as app_error_exc:
-        logger.error("Error occured while adding received message: %s", app_error_exc.detail)
+        logger.error(f"Error occured while adding received message: {app_error_exc.detail}")
         await message.answer("Error occured while adding message.\nPlease try again later or check logs.")
         return
 
