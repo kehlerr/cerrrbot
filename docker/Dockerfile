@@ -37,7 +37,6 @@ USER $USER
 # Copy project files and lockfile
 COPY --chown=$USER:$USER pyproject.toml uv.lock ./
 COPY --chown=$USER:$USER app/ ./app/
-COPY --chown=$USER:$USER .env .
 
 # Sync dependencies using uv (creates .venv automatically)
 RUN uv sync --frozen --no-dev --all-packages
