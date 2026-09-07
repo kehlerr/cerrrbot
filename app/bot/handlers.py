@@ -22,8 +22,6 @@ handlers_router = Router()
 async def on_received_message(message: Message, bot: Bot, savmes_service: FromDishka[SavmesService]) -> None:
     logger.debug(f"Received new message: {message}")
 
-    await bot.send_chat_action(chat_id=message.chat.id, action="typing")
-
     try:
         msgdoc = await savmes_service.add_new_message(message)
     except AppError as app_error_exc:
@@ -34,6 +32,8 @@ async def on_received_message(message: Message, bot: Bot, savmes_service: FromDi
     reply_info = MenuPresenter.get_reply_info(msgdoc)
     if not reply_info.actions:
         return
+
+    await bot.send_chat_action(chat_id=message.chat.id, action="typing")
 
     reply_action_message = await message.reply(
         "Choose action for message:",

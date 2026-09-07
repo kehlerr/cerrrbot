@@ -63,9 +63,33 @@ class SavmesService:
             logger.exception(f"Failed to set reply action message id: {reply_action_message_id}")
 
     async def _make_msgdoc_from_message(self, message: Message) -> MessageDocument:
-        is_subsequent_in_media_group = await self._cache_repo.is_subsequent_in_media_group(message.media_group_id)
         msgdoc = MessageDocument.from_message(message)
-        msgdoc.is_subsequent_in_media_group = is_subsequent_in_media_group
+
+        source_data = msgdoc.get_source_data()
+        origin_date = int(msgdoc.get_message_origin_date().timestamp())
+        origin_chat_id = msgdoc.chat.id
+        source_id = source_data.source_id
+
+        if message.media_group_id:
+            is_first = await self._cache_repo.register_media_group(
+                message.media_group_id,
+                chat_id=origin_chat_id,
+                source_id=source_id,
+                origin_date=origin_date,
+            )
+            msgdoc.is_subsequent_in_media_group = not is_first
+        else:
+            companion_media_group_id = await self._cache_repo.find_companion_media_group(
+                chat_id=origin_chat_id,
+                source_id=source_id,
+                origin_date=origin_date,
+            )
+            if companion_media_group_id:
+                msgdoc.media_group_id = companion_media_group_id
+                msgdoc.is_subsequent_in_media_group = True
+            else:
+                msgdoc.is_subsequent_in_media_group = False
+
         return msgdoc
 
     async def execute_message_action(
