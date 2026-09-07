@@ -1,4 +1,5 @@
 import hashlib
+import re
 from collections.abc import Mapping
 from datetime import datetime
 from pathlib import Path
@@ -9,7 +10,7 @@ from loguru import logger
 
 from app.exceptions import InvalidMessageDocumentError
 from app.models import MediaAttachment, MessageDocument
-from app.models.message_media import StickerAttachment
+from app.models.message_media import AudioAttachment, StickerAttachment
 from app.types import ContentType
 
 from .exceptions import InvalidStickerSetError
@@ -105,8 +106,19 @@ class FileDownloader:
                 sticker_ext = cls.FILE_EXTENSION_BY_CONTENT_TYPE[ContentType.STICKER]
             return f"{file_uid_hashed}.{sticker_ext}"
 
-        message_date = msgdoc.get_message_origin_date()
+        ext = cls._get_file_extension(msgdoc, downloadable)
 
+        if msgdoc.content_type == ContentType.AUDIO or isinstance(downloadable, AudioAttachment):
+            if audio_file_name := cls._build_audio_file_name(msgdoc, downloadable, ext):
+                return audio_file_name
+
+        message_date = msgdoc.get_message_origin_date()
+        message_source = msgdoc.get_source_data()
+
+        return f"{message_source.source_id}_{message_date.strftime('%Y-%m-%d_%H-%M-%S')}_{file_uid_hashed}.{ext}"
+
+    @classmethod
+    def _get_file_extension(cls, msgdoc: MessageDocument, downloadable: MediaAttachment) -> str:
         ext = None
         if hasattr(downloadable, "file_name") and (file_name := getattr(downloadable, "file_name", None)):
             if suffix := Path(file_name).suffix.lstrip("."):
@@ -137,6 +149,54 @@ class FileDownloader:
         if not ext:
             ext = cls.FILE_EXTENSION_BY_CONTENT_TYPE.get(msgdoc.content_type, "bin")
 
-        message_source = msgdoc.get_source_data()
+        return ext
 
-        return f"{message_source.source_id}_{message_date.strftime('%Y-%m-%d_%H-%M-%S')}_{file_uid_hashed}.{ext}"
+    @staticmethod
+    def _sanitize_name_component(value: str) -> str:
+        sanitized = re.sub(r'[\\/:*?"<>|\0]', "_", value)
+        return sanitized.strip()
+
+    @classmethod
+    def _build_audio_file_name(cls, msgdoc: MessageDocument, downloadable: MediaAttachment, ext: str) -> str | None:
+        performer = getattr(downloadable, "performer", None)
+        title = getattr(downloadable, "title", None)
+
+        if not performer and not title and msgdoc.media and msgdoc.media.audio:
+            performer = msgdoc.media.audio.performer
+            title = msgdoc.media.audio.title
+
+        performer = cls._sanitize_name_component(performer) if performer else None
+        title = cls._sanitize_name_component(title) if title else None
+
+        performer = performer or None
+        title = title or None
+
+        if not title and hasattr(downloadable, "file_name") and (fn := getattr(downloadable, "file_name", None)):
+            fn_stem = Path(fn).stem
+            title = cls._sanitize_name_component(fn_stem) or None
+
+        if title and ext and title.lower().endswith(f".{ext.lower()}"):
+            title = title[: -(len(ext) + 1)].strip() or None
+
+        if performer and title and performer.lower() == title.lower():
+            title = None
+
+        if performer and title:
+            title_lower = title.lower()
+            performer_lower = performer.lower()
+            if (
+                title_lower.startswith(f"{performer_lower} -")
+                or title_lower.startswith(f"{performer_lower} —")
+                or title_lower.startswith(f"{performer_lower} –")
+            ):
+                stem = title
+            else:
+                stem = f"{performer} - {title}"
+        elif performer:
+            stem = performer
+        elif title:
+            stem = title
+        else:
+            return None
+
+        return f"{stem}.{ext}"
